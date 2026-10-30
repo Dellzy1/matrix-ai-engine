@@ -25,7 +25,6 @@ export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  // Real Supabase Auth States
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [emailInput, setEmailInput] = useState<string>("");
@@ -35,7 +34,6 @@ export default function App() {
   const [viewState, setViewState] = useState<"landing" | "input" | "results">("landing");
   const [promptInput, setPromptInput] = useState<string>("");
 
-  // User Scoring & Matrix States
   const [options, setOptions] = useState([
     { name: "Option A", costScore: 5, feasibility: 8, impact: 8, risk: 3 },
     { name: "Option B", costScore: 7, feasibility: 6, impact: 9, risk: 5 },
@@ -47,18 +45,15 @@ export default function App() {
   const [savedMatrices, setSavedMatrices] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<string>("");
 
-  // 1. Real Supabase Auth Session Listener
   useEffect(() => {
     if (!supabase) return;
 
-    // Check initial active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email || "" });
       }
     });
 
-    // Subscribe to real-time auth changes (Sign In / Sign Out / Token Refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email || "" });
@@ -71,7 +66,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Fetch User-Owned Matrices from Supabase RLS
   useEffect(() => {
     async function fetchMatrices() {
       if (!supabase || !user) return;
@@ -85,19 +79,16 @@ export default function App() {
     fetchMatrices();
   }, [user]);
 
-  // Handle Real Authentication (Sign In or Automatic Sign Up)
   const handleRealAuth = async () => {
     if (!supabase || !emailInput || !passwordInput) return;
     setAuthError("");
 
-    // Attempt Sign In
     const { data, error } = await supabase.auth.signInWithPassword({
       email: emailInput,
       password: passwordInput,
     });
 
     if (error) {
-      // If user doesn't exist or fails, attempt registration
       const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
         email: emailInput,
         password: passwordInput,
@@ -124,7 +115,6 @@ export default function App() {
     if (supabase) await supabase.auth.signOut();
   };
 
-  // Calculate Weighted Scores
   const calculatedOptions = useMemo(() => {
     const totalWeight = weights.cost + weights.feasibility + weights.impact + weights.risk || 1;
     return options
@@ -144,7 +134,6 @@ export default function App() {
       .sort((a, b) => b.score - a.score);
   }, [options, weights]);
 
-  // AI Devil's Advocate & Blindspot Analyzer
   const aiBlindspotAnalysis = useMemo(() => {
     const highRiskOpt = options.find((o) => o.risk >= 7);
     const highCostOpt = options.find((o) => o.costScore >= 8);
@@ -158,7 +147,6 @@ export default function App() {
     return `✅ AI Assessment: Weight distribution is well-aligned with current option trade-offs. No critical cognitive biases detected.`;
   }, [options, weights]);
 
-  // 3. Real Database Save Operation
   const handleSaveMatrix = async () => {
     if (!supabase || !user) {
       setShowAuthModal(true);
@@ -191,7 +179,6 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
-      {/* Navigation Header */}
       <header className={`border-b ${theme === "dark" ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"} p-4 flex items-center justify-between sticky top-0 z-30 backdrop-blur`}>
         <div className="flex items-center gap-3">
           <Sparkles className="w-6 h-6 text-indigo-400" />
@@ -218,7 +205,6 @@ export default function App() {
       </header>
 
       <div className="flex">
-        {/* Real User History Drawer */}
         {isSidebarOpen && (
           <aside className={`w-72 border-r ${theme === "dark" ? "border-slate-800 bg-slate-900/40" : "border-slate-200 bg-white"} p-4 min-h-[calc(100vh-73px)]`}>
             <div className="flex items-center justify-between mb-3">
@@ -325,13 +311,11 @@ export default function App() {
                 </button>
               </div>
 
-              {/* AI Blindspot Banner */}
               <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs flex items-center gap-3">
                 <Brain className="w-5 h-5 text-indigo-400 shrink-0" />
                 <span>{aiBlindspotAnalysis}</span>
               </div>
 
-              {/* Calculated Options */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {calculatedOptions.map((opt, idx) => (
                   <div key={idx} className={`p-5 rounded-2xl border ${idx === 0 ? "border-indigo-500 bg-indigo-950/20" : "border-slate-800 bg-slate-900"} space-y-3`}>
@@ -344,7 +328,6 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Review Loop Section */}
               <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 space-y-4">
                 <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-400">
                   <Calendar className="w-4 h-4" /> Decision Review Loop & Reflection Tracker
@@ -376,7 +359,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Real Supabase Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
