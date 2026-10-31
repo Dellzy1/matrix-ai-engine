@@ -20,6 +20,9 @@ import {
   FileSpreadsheet,
   Edit3,
   AlertCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -53,28 +56,66 @@ const DECISION_TEMPLATES = [
       { name: "Buy Off-the-Shelf SaaS", scores: { upfrontCost: 4, timeToMarket: 9, customization: 5, maintenance: 2 } },
     ],
   },
+  {
+    name: "Hire vs. Contract",
+    criteria: [
+      { id: "hourlyRate", name: "Financial Cost Rate", weight: 30, isInverted: true },
+      { id: "speed", name: "Onboarding Speed", weight: 25, isInverted: false },
+      { id: "retention", name: "Long-term Knowledge Retention", weight: 25, isInverted: false },
+      { id: "flexibility", name: "Engagement Flexibility", weight: 20, isInverted: false },
+    ],
+    options: [
+      { name: "Full-Time Employee (FTE)", scores: { hourlyRate: 6, speed: 4, retention: 9, flexibility: 3 } },
+      { name: "External Contractor / Agency", scores: { hourlyRate: 8, speed: 9, retention: 4, flexibility: 9 } },
+    ],
+  },
+  {
+    name: "Tool / Software Comparison",
+    criteria: [
+      { id: "cost", name: "Subscription Cost", weight: 20, isInverted: true },
+      { id: "usability", name: "Ease of Use / UX", weight: 30, isInverted: false },
+      { id: "integrations", name: "Ecosystem Integrations", weight: 30, isInverted: false },
+      { id: "performance", name: "Performance & Reliability", weight: 20, isInverted: false },
+    ],
+    options: [
+      { name: "Tool Alpha", scores: { cost: 5, usability: 8, integrations: 9, performance: 8 } },
+      { name: "Tool Beta", scores: { cost: 3, usability: 9, integrations: 6, performance: 9 } },
+    ],
+  },
+  {
+    name: "Job Offer Comparison",
+    criteria: [
+      { id: "compensation", name: "Base + Equity Compensation", weight: 35, isInverted: false },
+      { id: "growth", name: "Career Growth Potential", weight: 25, isInverted: false },
+      { id: "wfb", name: "Work-Life Balance & Remote", weight: 25, isInverted: false },
+      { id: "stability", name: "Company Stability / Risk", weight: 15, isInverted: false },
+    ],
+    options: [
+      { name: "Offer A (Tech Scale-Up)", scores: { compensation: 8, growth: 9, wfb: 6, stability: 6 } },
+      { name: "Offer B (Established Corp)", scores: { compensation: 7, growth: 6, wfb: 8, stability: 9 } },
+    ],
+  },
 ];
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  // Auth States (Separated Sign In vs Register)
+  // Auth States
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState<string>("");
   const [passwordInput, setPasswordInput] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>("");
+  const [authSuccessMsg, setAuthSuccessMsg] = useState<string>("");
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
-  // Active Decision Editing ID State
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null);
-
   const [viewState, setViewState] = useState<"landing" | "input" | "results">("landing");
   const [promptInput, setPromptInput] = useState<string>("");
 
-  // Criteria & Options
   const [criteria, setCriteria] = useState<Array<{ id: string; name: string; weight: number; isInverted: boolean }>>([
     { id: "cost", name: "Cost", weight: 25, isInverted: true },
     { id: "feasibility", name: "Feasibility", weight: 25, isInverted: false },
@@ -89,11 +130,9 @@ export default function App() {
 
   const [reviewDate, setReviewDate] = useState<string>("");
   const [actualOutcome, setActualOutcome] = useState<string>("");
-  
   const [savedMatrices, setSavedMatrices] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<string>("");
 
-  // Helper function to restrict numbers strictly between 1 and 10
   const clampScore = (val: number) => Math.min(10, Math.max(1, isNaN(val) ? 1 : val));
 
   useEffect(() => {
@@ -126,15 +165,14 @@ export default function App() {
         .order("created_at", { ascending: false });
 
       if (data && !error) setSavedMatrices(data);
-      if (error) setSaveStatus(`Fetch error: ${error.message}`);
     }
     fetchMatrices();
   }, [user]);
 
-  // Separate Login & Registration Logic
   const handleAuthSubmit = async () => {
     if (!supabase || !emailInput || !passwordInput) return;
     setAuthError("");
+    setAuthSuccessMsg("");
     setAuthLoading(true);
 
     try {
@@ -155,9 +193,10 @@ export default function App() {
           password: passwordInput,
         });
         if (error) throw error;
+        
         if (data.user) {
-          setShowAuthModal(false);
-          setEmailInput("");
+          setAuthSuccessMsg("Account created successfully! You can now sign in.");
+          setAuthMode("signin");
           setPasswordInput("");
         }
       }
@@ -168,19 +207,14 @@ export default function App() {
     }
   };
 
-  // Load Saved Decision Record with Full Options & Criteria
   const handleLoadSavedDecision = (item: any) => {
     setActiveDecisionId(item.id || null);
     setPromptInput(item.title || "Loaded Decision");
     setReviewDate(item.review_date || "");
     setActualOutcome(item.actual_outcome || "");
 
-    if (item.criteria && Array.isArray(item.criteria)) {
-      setCriteria(item.criteria);
-    }
-    if (item.options && Array.isArray(item.options)) {
-      setOptions(item.options);
-    }
+    if (item.criteria && Array.isArray(item.criteria)) setCriteria(item.criteria);
+    if (item.options && Array.isArray(item.options)) setOptions(item.options);
 
     setViewState("results");
     setIsSidebarOpen(false);
@@ -232,7 +266,6 @@ export default function App() {
     setOptions(options.filter((_, i) => i !== idx));
   };
 
-  // Calculated Options with Scoring Bounds
   const calculatedOptions = useMemo(() => {
     const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0) || 1;
 
@@ -276,7 +309,6 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // Save / Edit Matrix in Supabase
   const handleSaveMatrix = async () => {
     if (!supabase || !user) {
       setShowAuthModal(true);
@@ -296,18 +328,11 @@ export default function App() {
 
       let responseData;
       if (activeDecisionId) {
-        // Edit / Update Existing Matrix
-        const { data, error } = await supabase
-          .from("matrices")
-          .update(payload)
-          .eq("id", activeDecisionId)
-          .select();
-
+        const { data, error } = await supabase.from("matrices").update(payload).eq("id", activeDecisionId).select();
         if (error) throw error;
         responseData = data;
         setSaveStatus("Updated successfully!");
       } else {
-        // Insert New Matrix
         const { data, error } = await supabase.from("matrices").insert([payload]).select();
         if (error) throw error;
         responseData = data;
@@ -318,23 +343,20 @@ export default function App() {
       if (responseData && responseData[0]) {
         setSavedMatrices((prev) => {
           const exists = prev.some((m) => m.id === responseData[0].id);
-          if (exists) {
-            return prev.map((m) => (m.id === responseData[0].id ? responseData[0] : m));
-          }
+          if (exists) return prev.map((m) => (m.id === responseData[0].id ? responseData[0] : m));
           return [responseData[0], ...prev];
         });
       }
 
       setTimeout(() => setSaveStatus(""), 3000);
     } catch (err: any) {
-      // Display Actual Supabase Error Message
       setSaveStatus(`Save Error: ${err.message || "Failed to persist data."}`);
     }
   };
 
   return (
     <div className={`min-h-screen ${theme === "dark" ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
-      {/* Header */}
+      {/* Navigation Header */}
       <header className={`border-b ${theme === "dark" ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"} p-4 flex items-center justify-between sticky top-0 z-30 backdrop-blur`}>
         <div className="flex items-center gap-3">
           <Sparkles className="w-6 h-6 text-indigo-400" />
@@ -353,7 +375,7 @@ export default function App() {
               <button onClick={async () => { if (supabase) await supabase.auth.signOut(); }} className="ml-2 hover:text-white"><LogOut className="w-3.5 h-3.5" /></button>
             </div>
           ) : (
-            <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition">
+            <button onClick={() => { setAuthMode("signin"); setShowAuthModal(true); }} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition">
               <Lock className="w-3.5 h-3.5" /> Sign In / Register
             </button>
           )}
@@ -414,7 +436,7 @@ export default function App() {
                 {activeDecisionId && <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-medium">Editing Saved Record</span>}
               </div>
 
-              {/* Decision Templates Selection */}
+              {/* Decision Templates Picker */}
               <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 space-y-2">
                 <label className="block text-xs font-bold text-indigo-300 uppercase tracking-wider">Load Quick Decision Template:</label>
                 <select
@@ -441,7 +463,7 @@ export default function App() {
                   />
                 </div>
 
-                {/* Dynamic Criteria Builder */}
+                {/* Dynamic Criteria */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Dynamic Decision Criteria</h3>
@@ -486,7 +508,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Mobile Responsive Option Scoring Grid */}
+                {/* Mobile Responsive Grid */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Options & Scores (Strict 1–10 Scale)</h3>
@@ -515,7 +537,6 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Stack on Mobile, Grid on Larger Screens */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                         {criteria.map((crit) => (
                           <div key={crit.id} className="space-y-1">
@@ -574,7 +595,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* AI Analysis Banner */}
               <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-1">
                 <div className="flex items-center gap-2 font-bold text-indigo-300">
                   <Brain className="w-4 h-4 text-indigo-400" /> AI Dynamic Matrix Assessment
@@ -583,7 +603,6 @@ export default function App() {
                 <p className="text-slate-400 text-[11px]">{aiAnalysisResult.warning}</p>
               </div>
 
-              {/* Options Rankings */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {calculatedOptions.map((opt, idx) => (
                   <div key={idx} className={`p-5 rounded-2xl border ${idx === 0 ? "border-indigo-500 bg-indigo-950/20" : "border-slate-800 bg-slate-900"} space-y-3`}>
@@ -596,7 +615,6 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Outcome Review Section */}
               <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/60 space-y-4">
                 <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-400">
                   <Calendar className="w-4 h-4" /> Decision Review Loop
@@ -628,25 +646,26 @@ export default function App() {
         </main>
       </div>
 
-      {/* Auth Modal with Separated Sign In vs Register */}
+      {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold">Supabase Authentication</h3>
+              <h3 className="text-sm font-bold">
+                {authMode === "signin" ? "Sign In to Your Decision Vault" : "Create Your Decision Vault"}
+              </h3>
               <button onClick={() => setShowAuthModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            {/* Auth Tab Switcher */}
             <div className="grid grid-cols-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
               <button
-                onClick={() => { setAuthMode("signin"); setAuthError(""); }}
+                onClick={() => { setAuthMode("signin"); setAuthError(""); setAuthSuccessMsg(""); }}
                 className={`py-1.5 rounded-lg font-medium transition ${authMode === "signin" ? "bg-indigo-600 text-white" : "text-slate-400"}`}
               >
                 Sign In
               </button>
               <button
-                onClick={() => { setAuthMode("signup"); setAuthError(""); }}
+                onClick={() => { setAuthMode("signup"); setAuthError(""); setAuthSuccessMsg(""); }}
                 className={`py-1.5 rounded-lg font-medium transition ${authMode === "signup" ? "bg-indigo-600 text-white" : "text-slate-400"}`}
               >
                 Create Account
@@ -654,27 +673,45 @@ export default function App() {
             </div>
 
             {authError && <p className="text-xs text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-800">{authError}</p>}
+            {authSuccessMsg && (
+              <div className="text-xs text-emerald-300 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{authSuccessMsg}</span>
+              </div>
+            )}
 
             <input
               type="email"
               placeholder="name@example.com"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs focus:outline-none focus:border-indigo-500"
             />
-            <input
-              type="password"
-              placeholder="•••••••• (Min 6 characters)"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs"
-            />
+
+            {/* Password Field with Show/Hide Toggle */}
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="•••••••• (Min 6 characters)"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 pr-10 text-xs focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
             <button
               onClick={handleAuthSubmit}
               disabled={authLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-xs font-medium transition"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-xs font-medium transition shadow-lg"
             >
-              {authLoading ? "Authenticating..." : authMode === "signin" ? "Sign In" : "Register Account"}
+              {authLoading ? "Processing..." : authMode === "signin" ? "Sign In" : "Create Account"}
             </button>
           </div>
         </div>
