@@ -4,8 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
-  ArrowLeft, Plus, Trash2, FileSpreadsheet, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
+  ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
 } from "lucide-react";
+import ExportMenu from "./ExportMenu";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -19,7 +20,7 @@ type AuthUser = { id: string; email: string };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clampScore = (n: number) => (Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : 1);
-const parseScoreInput = (raw: string) => {
+const parseScoreInput = (raw: string): number | null => {
   if (raw.trim() === "") return null;
   const n = Math.round(Number(raw));
   return Number.isNaN(n) ? null : n;
@@ -32,12 +33,21 @@ const DEFAULT_CRITERIA: Criterion[] = [
   { id: "risk", name: "Risk", weight: 25, isInverted: true },
 ];
 
-const DEFAULT_OPTIONS: Option[] = [
-  { id: "opt-a", name: "Option A", scores: { cost: 5, feasibility: 8, impact: 8, risk: 3 } },
-  { id: "opt-b", name: "Option B", scores: { cost: 7, feasibility: 6, impact: 9, risk: 5 } },
+// Scores always start blank, so the user enters their own numbers.
+const blankScores = (crits: Criterion[]): Record<string, number | null> =>
+  Object.fromEntries(crits.map((c) => [c.id, null] as const));
+
+const makeDefaultOptions = (): Option[] => [
+  { id: uid(), name: "Option A", scores: blankScores(DEFAULT_CRITERIA) },
+  { id: uid(), name: "Option B", scores: blankScores(DEFAULT_CRITERIA) },
 ];
 
-const DECISION_TEMPLATES = [
+// Templates provide criteria and option names only, never sample scores.
+const DECISION_TEMPLATES: Array<{
+  name: string;
+  criteria: Criterion[];
+  options: string[];
+}> = [
   {
     name: "Vendor Selection",
     criteria: [
@@ -46,10 +56,7 @@ const DECISION_TEMPLATES = [
       { id: "support", name: "SLA & Support", weight: 20, isInverted: false },
       { id: "security", name: "Compliance & Security", weight: 20, isInverted: false },
     ],
-    options: [
-      { name: "Vendor A (Established Enterprise)", scores: { pricing: 8, features: 9, support: 9, security: 9 } },
-      { name: "Vendor B (Agile Challenger)", scores: { pricing: 4, features: 8, support: 7, security: 7 } },
-    ],
+    options: ["Vendor A", "Vendor B"],
   },
   {
     name: "Build vs. Buy",
@@ -59,10 +66,7 @@ const DECISION_TEMPLATES = [
       { id: "customization", name: "Customization & Control", weight: 25, isInverted: false },
       { id: "maintenance", name: "Long-term Maintenance Burden", weight: 15, isInverted: true },
     ],
-    options: [
-      { name: "Build In-House", scores: { upfrontCost: 9, timeToMarket: 3, customization: 10, maintenance: 8 } },
-      { name: "Buy Off-the-Shelf SaaS", scores: { upfrontCost: 4, timeToMarket: 9, customization: 5, maintenance: 2 } },
-    ],
+    options: ["Build In-House", "Buy Off-the-Shelf SaaS"],
   },
   {
     name: "Hire vs. Contract",
@@ -72,10 +76,7 @@ const DECISION_TEMPLATES = [
       { id: "retention", name: "Long-term Knowledge Retention", weight: 25, isInverted: false },
       { id: "flexibility", name: "Engagement Flexibility", weight: 20, isInverted: false },
     ],
-    options: [
-      { name: "Full-Time Employee (FTE)", scores: { hourlyRate: 6, speed: 4, retention: 9, flexibility: 3 } },
-      { name: "External Contractor / Agency", scores: { hourlyRate: 8, speed: 9, retention: 4, flexibility: 9 } },
-    ],
+    options: ["Full-Time Employee", "External Contractor / Agency"],
   },
   {
     name: "Tool / Software Comparison",
@@ -85,10 +86,7 @@ const DECISION_TEMPLATES = [
       { id: "integrations", name: "Ecosystem Integrations", weight: 30, isInverted: false },
       { id: "performance", name: "Performance & Reliability", weight: 20, isInverted: false },
     ],
-    options: [
-      { name: "Tool Alpha", scores: { cost: 5, usability: 8, integrations: 9, performance: 8 } },
-      { name: "Tool Beta", scores: { cost: 3, usability: 9, integrations: 6, performance: 9 } },
-    ],
+    options: ["Tool A", "Tool B"],
   },
   {
     name: "Job Offer Comparison",
@@ -98,15 +96,9 @@ const DECISION_TEMPLATES = [
       { id: "wfb", name: "Work-Life Balance & Remote", weight: 25, isInverted: false },
       { id: "stability", name: "Company Stability / Risk", weight: 15, isInverted: false },
     ],
-    options: [
-      { name: "Offer A (Tech Scale-Up)", scores: { compensation: 8, growth: 9, wfb: 6, stability: 6 } },
-      { name: "Offer B (Established Corp)", scores: { compensation: 7, growth: 6, wfb: 8, stability: 9 } },
-    ],
+    options: ["Offer A", "Offer B"],
   },
 ];
-
-const withIds = (rows: { name: string; scores: Record<string, number | null> }[]): Option[] =>
-  rows.map((o) => ({ id: uid(), name: o.name, scores: { ...o.scores } }));
 
 const hydrateOptions = (rows: any[]): Option[] =>
   rows.map((o) => ({ id: o.id ?? uid(), name: String(o.name ?? "Option"), scores: { ...(o.scores ?? {}) } }));
@@ -119,7 +111,7 @@ const hydrateCriteria = (rows: any[]): Criterion[] =>
     isInverted: Boolean(c.isInverted),
   }));
 
-// Pure scoring function, shared by the live results and the history sidebar.
+// Shared by the live results and the history cards.
 function scoreOptions(criteria: Criterion[], options: Option[]): ScoredOption[] {
   const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   return options
@@ -143,13 +135,13 @@ function validateDecision(title: string, criteria: Criterion[], options: Option[
   if (criteria.reduce((sum, c) => sum + (c.weight || 0), 0) <= 0) return "Give at least one criterion a weight above 0%.";
   if (options.length < 2) return "Add at least two options to compare.";
   if (options.some((o) => !o.name.trim())) return "Every option needs a name.";
-  const badScore = options.some((o) =>
+  const missingOrInvalid = options.some((o) =>
     criteria.some((c) => {
       const v = o.scores[c.id];
       return v == null || v < 1 || v > 10;
     })
   );
-  if (badScore) return "Every score must be a number from 1 to 10.";
+  if (missingOrInvalid) return "Every score must be a number from 1 to 10.";
   return null;
 }
 
@@ -187,7 +179,7 @@ export default function App() {
 
   // Auth
   const [user, setUser] = useState<AuthUser | null>(null);
-  const ownerRef = useRef<string | null>(null); // tracks which account owns the current draft
+  const ownerRef = useRef<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState("");
@@ -202,7 +194,7 @@ export default function App() {
   const [promptInput, setPromptInput] = useState("");
   const [reason, setReason] = useState("");
   const [criteria, setCriteria] = useState<Criterion[]>(DEFAULT_CRITERIA);
-  const [options, setOptions] = useState<Option[]>(DEFAULT_OPTIONS);
+  const [options, setOptions] = useState<Option[]>(makeDefaultOptions);
   const [reviewDate, setReviewDate] = useState("");
   const [actualOutcome, setActualOutcome] = useState("");
 
@@ -213,19 +205,20 @@ export default function App() {
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
   const checks = useMemo(() => automaticChecks(criteria, ranked), [criteria, ranked]);
   const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
+  const shareOf = (weight: number) => (totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0);
 
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Fix: clears the draft so one account never sees another account's work.
+  // Clears the draft so one account never sees another account's work.
   const resetDecisionForm = () => {
     setActiveDecisionId(null);
     setPromptInput("");
     setReason("");
     setCriteria(DEFAULT_CRITERIA);
-    setOptions(DEFAULT_OPTIONS);
+    setOptions(makeDefaultOptions());
     setReviewDate("");
     setActualOutcome("");
     setNotice(null);
@@ -235,7 +228,6 @@ export default function App() {
 
   const applySession = (next: AuthUser | null) => {
     const nextId = next?.id ?? null;
-    // Reset only when the owner changes or signs out. Signing in from a guest draft keeps the draft.
     if (ownerRef.current && ownerRef.current !== nextId) resetDecisionForm();
     ownerRef.current = nextId;
     setUser(next);
@@ -268,7 +260,7 @@ export default function App() {
     fetchMatrices();
   }, [userId]);
 
-  // Auth: separate sign-in and sign-up, with clear messages for each.
+  // Auth
   const openAuth = (mode: "signin" | "signup") => {
     setAuthMode(mode);
     setAuthError("");
@@ -319,11 +311,9 @@ export default function App() {
         if (error) throw error;
         setPasswordInput("");
         if (data.session) {
-          // Email confirmation is turned off, so the user is signed in right away.
           setEmailInput("");
           setShowAuthModal(false);
         } else {
-          // Email confirmation is on: the user must click the link before signing in.
           setAuthSuccessMsg("Account created. Check your email for a confirmation link, then sign in here.");
           setAuthMode("signin");
         }
@@ -352,7 +342,7 @@ export default function App() {
     setReviewDate(item.review_date || "");
     setActualOutcome(item.actual_outcome || "");
     setCriteria(item.criteria?.length ? hydrateCriteria(item.criteria) : DEFAULT_CRITERIA);
-    setOptions(item.options?.length ? hydrateOptions(item.options) : DEFAULT_OPTIONS);
+    setOptions(item.options?.length ? hydrateOptions(item.options) : makeDefaultOptions());
     setNotice(null);
     setViewState("results");
     setIsSidebarOpen(false);
@@ -361,21 +351,25 @@ export default function App() {
   const handleLoadTemplate = (templateName: string) => {
     const tmpl = DECISION_TEMPLATES.find((t) => t.name === templateName);
     if (!tmpl) return;
+    const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c }));
     setActiveDecisionId(null);
     setPromptInput(tmpl.name);
-    setCriteria(tmpl.criteria.map((c) => ({ ...c })));
-    setOptions(withIds(tmpl.options));
+    setCriteria(templateCriteria);
+    setOptions(
+      tmpl.options.map((name) => ({ id: uid(), name, scores: blankScores(templateCriteria) }))
+    );
     setNotice(null);
   };
 
-  // Criteria (immutable updates throughout)
+  // Criteria
   const updateCriterion = (id: string, patch: Partial<Criterion>) =>
     setCriteria((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
   const handleAddCriterion = () => {
     const id = `crit_${uid()}`;
-    setCriteria((prev) => [...prev, { id, name: "New criterion", weight: 20, isInverted: false }]);
-    setOptions((prev) => prev.map((o) => ({ ...o, scores: { ...o.scores, [id]: 5 } })));
+    // Blank name and blank scores, so the user must fill them in.
+    setCriteria((prev) => [...prev, { id, name: "", weight: 20, isInverted: false }]);
+    setOptions((prev) => prev.map((o) => ({ ...o, scores: { ...o.scores, [id]: null } })));
   };
 
   const handleRemoveCriterion = (id: string) => {
@@ -383,13 +377,14 @@ export default function App() {
     setCriteria((prev) => prev.filter((c) => c.id !== id));
     setOptions((prev) =>
       prev.map((o) => {
-        const { [id]: _removed, ...rest } = o.scores;
-        return { ...o, scores: rest };
+        const scores = { ...o.scores };
+        delete scores[id];
+        return { ...o, scores };
       })
     );
   };
 
-  // Options and scores (immutable updates)
+  // Options and scores
   const updateOptionName = (optId: string, name: string) =>
     setOptions((prev) => prev.map((o) => (o.id === optId ? { ...o, name } : o)));
 
@@ -398,7 +393,6 @@ export default function App() {
       prev.map((o) => (o.id === optId ? { ...o, scores: { ...o.scores, [critId]: value } } : o))
     );
 
-  // Clamp to 1–10 when the user leaves the field, so a typed 15 becomes 10.
   const clampOnBlur = (optId: string, critId: string) =>
     setOptions((prev) =>
       prev.map((o) => {
@@ -414,7 +408,7 @@ export default function App() {
       {
         id: uid(),
         name: `Option ${String.fromCharCode(65 + (prev.length % 26))}`,
-        scores: Object.fromEntries(criteria.map((c) => [c.id, 5] as const)),
+        scores: blankScores(criteria),
       },
     ]);
 
@@ -443,8 +437,7 @@ export default function App() {
     );
     const csv = [header.map(esc).join(","), ...rows].join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     const link = document.createElement("a");
     link.href = url;
     link.download = `${(promptInput.trim() || "decision_matrix").toLowerCase().replace(/\s+/g, "_")}.csv`;
@@ -485,7 +478,7 @@ export default function App() {
       const { data, error } = await request;
       if (error) throw error;
 
-      // If RLS blocks the write, Supabase can return no error and no row. Treat that as a failure.
+      // RLS can block a write without returning an error, so an empty result counts as a failure.
       const row = data?.[0];
       if (!row) {
         throw new Error(
@@ -503,7 +496,6 @@ export default function App() {
       setNotice({ type: "success", text: activeDecisionId ? "Changes saved." : "Decision saved to your vault." });
       window.setTimeout(() => setNotice((n) => (n?.type === "success" ? null : n)), 3000);
     } catch (err: any) {
-      // Show the real Supabase message, plus the hint when one is provided.
       const detail = [err?.message, err?.hint].filter(Boolean).join(" ");
       showError(`Save failed: ${detail || "unknown error."}`);
     } finally {
@@ -513,9 +505,22 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
+      {/* Print styles: white page, dark text, no borders or shadows */}
+      <style>{`
+        @media print {
+          body { background: #ffffff !important; }
+          * {
+            background-color: transparent !important;
+            color: #0f172a !important;
+            box-shadow: none !important;
+            border-color: #cbd5e1 !important;
+          }
+        }
+      `}</style>
+
       {/* Header */}
       <header
-        className={`border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"} p-4 flex items-center justify-between sticky top-0 z-30 backdrop-blur`}
+        className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"} p-4 flex items-center justify-between sticky top-0 z-30 backdrop-blur`}
       >
         <div className="flex items-center gap-3">
           <Sparkles className="w-6 h-6 text-indigo-400" />
@@ -555,11 +560,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* Stacks on mobile, side by side on desktop */}
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-73px)]">
+        {/* History sidebar */}
         {isSidebarOpen && (
           <aside
-            className={`w-full md:w-96 shrink-0 border-b md:border-b-0 md:border-r ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-200 bg-white"} p-4 max-h-[70vh] md:max-h-none overflow-y-auto`}
+            className={`print:hidden w-full md:w-96 shrink-0 border-b md:border-b-0 md:border-r ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-200 bg-white"} p-4 max-h-[70vh] md:max-h-none overflow-y-auto`}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs uppercase font-semibold text-slate-400">Decision history</span>
@@ -623,7 +628,7 @@ export default function App() {
           {!isSidebarOpen && (
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400"
+              className="print:hidden flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400"
             >
               <History className="w-4 h-4" /> Open decision history
             </button>
@@ -631,7 +636,7 @@ export default function App() {
 
           {notice && (
             <div
-              className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+              className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
                 notice.type === "error"
                   ? "bg-rose-950/40 border-rose-800 text-rose-300"
                   : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
@@ -649,7 +654,9 @@ export default function App() {
           {/* Landing */}
           {viewState === "landing" && (
             <div className="text-center space-y-6 py-12">
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Decide with your criteria, then check the result</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                Decide with your criteria, then check the result
+              </h2>
               <p className="text-slate-400 max-w-md mx-auto text-sm">
                 Enter your own scores, weight what matters, save the decision, and record what happened later.
               </p>
@@ -698,6 +705,7 @@ export default function App() {
                     </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-slate-400">Templates add criteria and option names. You enter the scores.</p>
               </div>
 
               <div className={`p-4 sm:p-6 rounded-2xl border ${surface} space-y-6`}>
@@ -729,7 +737,7 @@ export default function App() {
                     <div>
                       <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Criteria</h3>
                       <p className={`text-[11px] ${totalWeight === 0 ? "text-rose-400" : "text-slate-400"}`}>
-                        Total weight: {totalWeight}%. Weights are scaled automatically, so they don't need to add up to 100.
+                        Total weight: {totalWeight}%. Each criterion's share is shown below, so the weights don't need to add up to 100.
                       </p>
                     </div>
                     <button
@@ -748,6 +756,7 @@ export default function App() {
                       <input
                         type="text"
                         value={crit.name}
+                        placeholder="Name this criterion"
                         onChange={(e) => updateCriterion(crit.id, { name: e.target.value })}
                         className={`flex-1 min-w-[10rem] ${field} border rounded-lg px-2.5 py-1.5 text-xs font-bold`}
                       />
@@ -766,6 +775,7 @@ export default function App() {
                           className={`w-16 ${field} border rounded-lg px-2 py-1 text-xs text-center`}
                         />
                       </label>
+                      <span className="text-[11px] text-slate-500 whitespace-nowrap">{shareOf(crit.weight)}% of total</span>
                       <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
                         <input
                           type="checkbox"
@@ -804,6 +814,7 @@ export default function App() {
                         <input
                           type="text"
                           value={opt.name}
+                          placeholder="Option name"
                           onChange={(e) => updateOptionName(opt.id, e.target.value)}
                           className={`${field} border rounded-lg px-3 py-1.5 text-xs font-bold w-full max-w-xs`}
                         />
@@ -821,7 +832,7 @@ export default function App() {
                         {criteria.map((crit) => (
                           <label key={crit.id} className="space-y-1">
                             <span className="text-[10px] text-slate-400 block truncate">
-                              {crit.name}
+                              {crit.name || "Unnamed criterion"}
                               {crit.isInverted ? " (lower is better)" : ""}
                             </span>
                             <input
@@ -857,22 +868,17 @@ export default function App() {
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-4">
                 <div className="space-y-1 min-w-0">
                   <h2 className="text-2xl font-bold break-words">{promptInput.trim() || "Decision analysis"}</h2>
-                  {activeDecisionId && <p className="text-[11px] text-amber-400">Saved in your vault</p>}
+                  {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">Saved in your vault</p>}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="print:hidden flex flex-wrap gap-2">
                   <button
                     onClick={() => setViewState("input")}
                     className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-amber-400" /> Edit
                   </button>
-                  <button
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" /> Export CSV
-                  </button>
+                  <ExportMenu onExportCSV={handleExportCSV} />
                   <button
                     onClick={handleSaveMatrix}
                     disabled={saving}
@@ -925,8 +931,8 @@ export default function App() {
                       {criteria.map((crit) => (
                         <li key={crit.id} className="flex justify-between gap-3 text-xs">
                           <span className="text-slate-400 break-words">
-                            {crit.name}
-                            {crit.isInverted ? " (lower is better)" : ""} · weight {crit.weight}%
+                            {crit.name || "Unnamed criterion"}
+                            {crit.isInverted ? " (lower is better)" : ""} · {shareOf(crit.weight)}% of total
                           </span>
                           <span className="font-semibold text-slate-200 whitespace-nowrap">
                             {opt.scores[crit.id] ?? "–"}/10
@@ -974,7 +980,7 @@ export default function App() {
 
       {/* Auth modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold">
