@@ -37,9 +37,10 @@ const DEFAULT_CRITERIA: Criterion[] = [
 const blankScores = (crits: Criterion[]): Record<string, number | null> =>
   Object.fromEntries(crits.map((c) => [c.id, null] as const));
 
-const makeDefaultOptions = (): Option[] => [
-  { id: uid(), name: "Option A", scores: blankScores(DEFAULT_CRITERIA) },
-  { id: uid(), name: "Option B", scores: blankScores(DEFAULT_CRITERIA) },
+// Fixed IDs, so nothing random runs during the server build.
+const DEFAULT_OPTIONS: Option[] = [
+  { id: "opt-a", name: "Option A", scores: blankScores(DEFAULT_CRITERIA) },
+  { id: "opt-b", name: "Option B", scores: blankScores(DEFAULT_CRITERIA) },
 ];
 
 // Templates provide criteria and option names only, never sample scores.
@@ -194,7 +195,7 @@ export default function App() {
   const [promptInput, setPromptInput] = useState("");
   const [reason, setReason] = useState("");
   const [criteria, setCriteria] = useState<Criterion[]>(DEFAULT_CRITERIA);
-  const [options, setOptions] = useState<Option[]>(makeDefaultOptions);
+  const [options, setOptions] = useState<Option[]>(DEFAULT_OPTIONS);
   const [reviewDate, setReviewDate] = useState("");
   const [actualOutcome, setActualOutcome] = useState("");
 
@@ -218,7 +219,7 @@ export default function App() {
     setPromptInput("");
     setReason("");
     setCriteria(DEFAULT_CRITERIA);
-    setOptions(makeDefaultOptions());
+    setOptions(DEFAULT_OPTIONS);
     setReviewDate("");
     setActualOutcome("");
     setNotice(null);
@@ -342,7 +343,7 @@ export default function App() {
     setReviewDate(item.review_date || "");
     setActualOutcome(item.actual_outcome || "");
     setCriteria(item.criteria?.length ? hydrateCriteria(item.criteria) : DEFAULT_CRITERIA);
-    setOptions(item.options?.length ? hydrateOptions(item.options) : makeDefaultOptions());
+    setOptions(item.options?.length ? hydrateOptions(item.options) : DEFAULT_OPTIONS);
     setNotice(null);
     setViewState("results");
     setIsSidebarOpen(false);
