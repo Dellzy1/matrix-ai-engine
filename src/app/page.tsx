@@ -202,6 +202,26 @@ export default function App() {
   const [savedMatrices, setSavedMatrices] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
+ const handleForgotPassword = async () => {
+  if (!emailInput.trim()) {
+    setNotice({ type: "error", text: "Please enter your email address first." });
+    return;
+  }
+  
+const res = await supabase?.auth.resetPasswordForEmail(emailInput, {
+  redirectTo: `${window.location.origin}/reset-password`,
+});
+const error = res?.error;
+
+  if (error) {
+    setNotice({ type: "error", text: error.message });
+  } else {
+    setNotice({
+      type: "success",
+      text: "Password reset link sent! Check your inbox.",
+    });
+  }
+};
   // Derived values
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
   const checks = useMemo(() => automaticChecks(criteria, ranked), [criteria, ranked]);
@@ -1033,6 +1053,17 @@ export default function App() {
                 onChange={(e) => setPasswordInput(e.target.value)}
                 className={`w-full ${field} border rounded-xl p-2.5 pr-10 text-xs`}
               />
+              {authMode === "signin" && (
+  <div className="flex justify-end mt-1.5">
+    <button
+      type="button"
+      onClick={handleForgotPassword}
+      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+    >
+      Forgot password?
+    </button>
+  </div>
+)}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
