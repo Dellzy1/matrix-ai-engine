@@ -494,8 +494,22 @@ const error = res?.error;
     link.click();
     URL.revokeObjectURL(url);
   };
-
+  
   const handleDeleteMatrix = async () => {
+    if (!supabase || !user || !activeDecisionId) return;
+    const confirmed = window.confirm("Delete this decision permanently? This can't be undone.");
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("matrices").delete().eq("id", activeDecisionId);
+    if (error) {
+      showError(`Could not delete: ${error.message}`);
+      return;
+    }
+
+    setSavedMatrices((prev) => prev.filter((m) => m.id !== activeDecisionId));
+    resetDecisionForm();
+    setNotice({ type: "success", text: "Decision deleted." });
+  };
 
   const handleSaveMatrix = async () => {
     if (!supabase || !user) {
@@ -924,31 +938,7 @@ return (
                   {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">Saved in your vault</p>}
                 </div>
 
-                                <div className="print:hidden flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setViewState("input")}
-                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-amber-400" /> Edit
-                  </button>
-                  <ExportMenu onExportCSV={handleExportCSV} />
-                  <button
-                    onClick={handleSaveMatrix}
-                    disabled={saving}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-medium px-4 py-2 rounded-xl shadow"
-                  >
-                    <Save className="w-4 h-4" />
-                    {saving ? "Saving..." : activeDecisionId ? "Update vault" : "Save to vault"}
-                  </button>
-                  {activeDecisionId && (
-                    <button
-                      onClick={handleDeleteMatrix}
-                      className="flex items-center gap-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-medium px-4 py-2 rounded-xl border border-rose-800"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+                
               </div>
 
               {reason.trim() && (
