@@ -185,8 +185,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
-
-
   // --- PASTE IT RIGHT HERE ---
   const [workspaceBranding, setWorkspaceBranding] = useState({
     company_name: "MatrixAI Engine",
