@@ -185,6 +185,37 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
+
+
+  // --- PASTE IT RIGHT HERE ---
+  const [workspaceBranding, setWorkspaceBranding] = useState({
+    company_name: "MatrixAI Engine",
+    logo_url: "",
+  });
+
+useEffect(() => {
+    async function fetchBranding() {
+      if (!supabase) return; // <--- Add this line right here
+      try {
+        const { data } = await supabase
+          .from("matrices")
+          .select("company_name, logo_url")
+          .limit(1)
+          .maybeSingle();
+
+        if (data && (data.company_name || data.logo_url)) {
+          setWorkspaceBranding({
+            company_name: data.company_name || "MatrixAI Engine",
+            logo_url: data.logo_url || "",
+          });
+        }
+      } catch (err) {
+        console.log("Using default branding");
+      }
+    }
+    fetchBranding();
+  }, []);
+
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSuccessMsg, setAuthSuccessMsg] = useState("");
@@ -524,9 +555,8 @@ const error = res?.error;
     }
   };
 
-  return (
+return (
     <div className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
-      {/* Print styles: white page, dark text, no borders or shadows */}
       <style>{`
         @media print {
           body { background: #ffffff !important; }
@@ -540,46 +570,56 @@ const error = res?.error;
       `}</style>
 
       {/* Header */}
-      <header
-        className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white"} p-4 flex items-center justify-between sticky top-0 z-30 backdrop-blur`}
-      >
+      <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-6 py-4 flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <Sparkles className="w-6 h-6 text-indigo-400" />
-          <h1 className="font-bold text-xl cursor-pointer" onClick={() => setViewState("landing")}>
-            MatrixAI Engine
-          </h1>
-          <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-medium">
+          <a href="/settings/branding" className="flex items-center gap-3 group">
+            {workspaceBranding.logo_url ? (
+              <img
+                src={workspaceBranding.logo_url}
+                alt="Workspace Logo"
+                className="w-8 h-8 object-contain rounded-lg border border-slate-700 bg-slate-900 p-0.5 group-hover:border-indigo-500 transition-colors"
+              />
+            ) : (
+              <Sparkles className="w-6 h-6 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+            )}
+            <h1 className="font-bold text-xl cursor-pointer text-slate-100 group-hover:text-indigo-400 transition-colors">
+              {workspaceBranding.company_name}
+            </h1>
+          </a>
+          <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
             Production v1.2
           </span>
         </div>
 
+        {/* Right side controls (Theme toggle & Auth) */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="p-2 rounded-lg border border-slate-700"
+            className="p-2 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
             aria-label="Toggle theme"
           >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
           </button>
 
           {user ? (
-            <div className="flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300">
-              <UserCheck className="w-4 h-4" />
-              <span className="max-w-[9rem] truncate">{user.email}</span>
-              <button onClick={handleSignOut} className="ml-1 hover:text-white" aria-label="Sign out">
+            <div className="flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg">
+              <UserCheck className="w-4 h-4 text-indigo-400" />
+              <span className="max-w-[9rem] truncate text-xs text-indigo-200">{user.email}</span>
+              <button onClick={handleSignOut} className="ml-1 text-slate-400 hover:text-red-400 transition-colors">
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
             <button
               onClick={() => openAuth("signin")}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition"
+              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
             >
               <Lock className="w-3.5 h-3.5" /> Sign in
             </button>
           )}
         </div>
       </header>
+
 
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-73px)]">
         {/* History sidebar */}
