@@ -655,23 +655,6 @@ const error = res?.error;
             </button>
           )}
 
-          {notice && (
-            <div
-              className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
-                notice.type === "error"
-                  ? "bg-rose-950/40 border-rose-800 text-rose-300"
-                  : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
-              }`}
-            >
-              {notice.type === "error" ? (
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-              )}
-              <span>{notice.text}</span>
-            </div>
-          )}
-
           {/* Landing */}
           {viewState === "landing" && (
             <div className="text-center space-y-6 py-12">
@@ -1003,6 +986,22 @@ const error = res?.error;
       {showAuthModal && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
+             {notice && (
+            <div
+              className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                notice.type === "error"
+                  ? "bg-rose-950/40 border-rose-800 text-rose-300"
+                  : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
+              }`}
+            >
+              {notice.type === "error" ? (
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              )}
+              <span>{notice.text}</span>
+            </div>
+          )}
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold">
                 {authMode === "signin" ? "Sign in to your decision vault" : "Create your decision vault"}
