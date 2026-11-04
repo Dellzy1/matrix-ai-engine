@@ -495,6 +495,8 @@ const error = res?.error;
     URL.revokeObjectURL(url);
   };
 
+  const handleDeleteMatrix = async () => {
+
   const handleSaveMatrix = async () => {
     if (!supabase || !user) {
       openAuth("signin");
@@ -922,7 +924,7 @@ return (
                   {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">Saved in your vault</p>}
                 </div>
 
-                <div className="print:hidden flex flex-wrap gap-2">
+                                <div className="print:hidden flex flex-wrap gap-2">
                   <button
                     onClick={() => setViewState("input")}
                     className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
@@ -938,6 +940,14 @@ return (
                     <Save className="w-4 h-4" />
                     {saving ? "Saving..." : activeDecisionId ? "Update vault" : "Save to vault"}
                   </button>
+                  {activeDecisionId && (
+                    <button
+                      onClick={handleDeleteMatrix}
+                      className="flex items-center gap-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-medium px-4 py-2 rounded-xl border border-rose-800"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
 
