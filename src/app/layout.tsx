@@ -1,7 +1,8 @@
+import { APP_NAME } from "@/lib/appConfig";
 import "./globals.css";
 
 export const metadata = {
-  title: "MatrixAI Engine",
+   title: APP_NAME,
   description: "Decision Intelligence & Review Loop",
 };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { APP_NAME } from "@/lib/appConfig";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
