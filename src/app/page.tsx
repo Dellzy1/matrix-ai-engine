@@ -376,6 +376,21 @@ const error = res?.error;
     }
   };
 
+    const handleDeleteAccount = async () => {
+    if (!supabase || !user) return;
+    const confirmed = window.confirm(
+      "Delete your account and all your saved decisions? This cannot be undone."
+    );
+    if (!confirmed) return;
+
+    const { error } = await supabase.rpc("delete_my_account");
+    if (error) {
+      showError(`Could not delete your account: ${error.message}`);
+      return;
+    }
+    await supabase.auth.signOut();
+    setNotice({ type: "success", text: "Your account and decisions were deleted." });
+  };
   const handleSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
   };
@@ -622,6 +637,12 @@ return (
               <span className="max-w-[9rem] truncate text-xs text-indigo-200">{user.email}</span>
               <button onClick={handleSignOut} className="ml-1 text-slate-400 hover:text-red-400 transition-colors">
                 <LogOut className="w-3.5 h-3.5" />
+              </button>
+                            <button
+                onClick={handleDeleteAccount}
+                className="ml-1 text-xs text-rose-400 hover:text-rose-300"
+              >
+                Delete account
               </button>
             </div>
           ) : (
