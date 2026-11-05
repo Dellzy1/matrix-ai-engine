@@ -179,6 +179,18 @@ export default function App() {
   const [viewState, setViewState] = useState<"landing" | "input" | "results">("landing");
   const [notice, setNotice] = useState<Notice>(null);
 
+    const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
   // Auth
   const [user, setUser] = useState<AuthUser | null>(null);
   const ownerRef = useRef<string | null>(null);
@@ -631,19 +643,42 @@ return (
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
           </button>
 
-          {user ? (
-            <div className="flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg">
-              <UserCheck className="w-4 h-4 text-indigo-400" />
-              <span className="max-w-[9rem] truncate text-xs text-indigo-200">{user.email}</span>
-              <button onClick={handleSignOut} className="ml-1 text-slate-400 hover:text-red-400 transition-colors">
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-                            <button
-                onClick={handleDeleteAccount}
-                className="ml-1 text-xs text-rose-400 hover:text-rose-300"
+                   {user ? (
+            <div className="relative" ref={accountRef}>
+              <button
+                onClick={() => setAccountOpen((o) => !o)}
+                aria-expanded={accountOpen}
+                className="flex items-center gap-1.5 bg-indigo-600/20 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300"
               >
-                Delete account
+                <UserCheck className="w-4 h-4" />
+                <span className="max-w-[7rem] truncate">{user.email.split("@")[0]}</span>
               </button>
+
+              {accountOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-700 shadow-xl py-1 z-50">
+                  <p className="px-3 py-2 text-[11px] text-slate-400 break-all border-b border-slate-800">
+                    {user.email}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setAccountOpen(false);
+                      handleSignOut();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Sign out
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAccountOpen(false);
+                      handleDeleteAccount();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-400 hover:bg-slate-800 border-t border-slate-800"
+                  >
+                    Delete account
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <button
