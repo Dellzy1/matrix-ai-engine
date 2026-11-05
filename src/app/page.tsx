@@ -1109,6 +1109,12 @@ return (
           )}
         </main>
       </div>
+      
+      <footer className="border-t border-slate-800 p-4 text-center text-xs text-slate-400 space-x-4">
+        <a href="/privacy" className="underline hover:text-slate-200">Privacy Policy</a>
+        <a href="/terms" className="underline hover:text-slate-200">Terms of Use</a>
+        <a href="mailto:decisionloop.help@gmail.com" className="underline hover:text-slate-200">Contact</a>
+      </footer>
 
       {/* Auth modal */}
       {showAuthModal && (
