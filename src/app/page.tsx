@@ -278,6 +278,7 @@ const error = res?.error;
       return v == null || v < 1 || v > 10;
     })
   );
+    const weakResult = ranked.length > 0 && ranked[0].score < 60;
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1045,7 +1046,11 @@ return (
                   <span className="break-words">{reason}</span>
                 </div>
               )}
-
+              {weakResult && (
+                <div className="p-3 rounded-xl border border-amber-700 bg-amber-950/40 text-amber-200 text-xs">
+                  No option scores strongly ({ranked[0].score}/100). Review your scores, or add another option, before you decide.
+                </div>
+              )}
               <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-bold text-indigo-300">
                   <Brain className="w-4 h-4 text-indigo-400" /> Automatic check
