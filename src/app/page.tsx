@@ -272,7 +272,12 @@ const error = res?.error;
   const checks = useMemo(() => automaticChecks(criteria, ranked), [criteria, ranked]);
   const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   const shareOf = (weight: number) => (totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0);
-
+  const missingScores = options.some((o) =>
+    criteria.some((c) => {
+      const v = o.scores[c.id];
+      return v == null || v < 1 || v > 10;
+    })
+  );
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -978,10 +983,19 @@ return (
                     </div>
                   ))}
                 </div>
-
+                {missingScores && (
+                  <p className="text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded-xl border border-rose-800">
+                    Some scores are still empty. Enter a number from 1 to 10 for every option and criterion before calculating.
+                  </p>
+                )}
                 <button
-                  onClick={handleCalculate}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition text-sm shadow"
+                           onClick={handleCalculate}
+                  disabled={missingScores}
+                  className={`w-full font-medium py-3 rounded-xl transition text-sm shadow ${
+                    missingScores
+                      ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                  }`}
                 >
                   Calculate and view results
                 </button>
