@@ -169,10 +169,10 @@ function automaticChecks(criteria: Criterion[], ranked: Array<{ name: string; sc
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const isDark = theme === "dark";
     useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  const isDark = theme === "dark";
   const surface = isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200";
   const field = isDark
     ? "bg-slate-950 border-slate-800 text-slate-100 focus:outline-none focus:border-indigo-500"
