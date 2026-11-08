@@ -775,15 +775,15 @@ return (
               <p className="text-slate-400 max-w-md mx-auto text-sm">
                 Enter your own scores, weight what matters, save the decision, and record what happened later.
               </p>
-              <div className="max-w-md mx-auto text-left text-sm text-slate-300 space-y-2">
-  <p className="font-semibold text-slate-100">How it works</p>
-  <ol className="list-decimal list-inside space-y-1 text-slate-400">
-    <li>Name the decision and list your options.</li>
-    <li>Add the criteria that matter, and score each option from 1 to 10.</li>
-    <li>Save it and set a review date.</li>
-    <li>Come back on that date and record what actually happened.</li>
-  </ol>
-</div>
+                   <div className={`max-w-md mx-auto text-left text-sm space-y-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                <p className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>How it works</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Name the decision and list your options.</li>
+                  <li>Add the criteria that matter, and score each option from 1 to 10.</li>
+                  <li>Save it and set a review date.</li>
+                  <li>Come back on that date and record what actually happened.</li>
+                </ol>
+              </div>
               <button
                 onClick={handleStartNew}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl shadow-lg transition text-sm"
