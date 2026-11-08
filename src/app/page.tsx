@@ -7,6 +7,7 @@ import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
 } from "lucide-react";
+import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import ExportMenu from "./ExportMenu";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -239,6 +240,7 @@ useEffect(() => {
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null);
   const [promptInput, setPromptInput] = useState("");
   const [reason, setReason] = useState("");
+    const [checkCategory, setCheckCategory] = useState<ChecklistCategory | "">("");
   const [criteria, setCriteria] = useState<Criterion[]>(DEFAULT_CRITERIA);
   const [options, setOptions] = useState<Option[]>(DEFAULT_OPTIONS);
   const [reviewDate, setReviewDate] = useState("");
@@ -852,7 +854,26 @@ return (
                     className={`w-full ${field} border rounded-xl p-3 text-sm`}
                   />
                 </div>
-
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold">Think about these before you score</label>
+                  <select
+                    value={checkCategory}
+                    onChange={(e) => setCheckCategory(e.target.value as ChecklistCategory)}
+                    className={`w-full ${field} border rounded-xl p-2.5 text-xs`}
+                  >
+                    <option value="">Choose a category (optional)</option>
+                    {(Object.keys(CHECKLISTS) as ChecklistCategory[]).map((key) => (
+                      <option key={key} value={key}>{CHECKLISTS[key].label}</option>
+                    ))}
+                  </select>
+                  {checkCategory && (
+                    <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
+                      {CHECKLISTS[checkCategory].prompts.map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold">Why this matters (optional)</label>
                   <textarea
