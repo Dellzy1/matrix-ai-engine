@@ -288,7 +288,6 @@ const error = res?.error;
   );
     const weakResult = ranked.length > 0 && ranked[0].score < 60;
       const summary = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
     const completed = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() !== "");
     const awaiting = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() === "");
     const upcoming = awaiting
