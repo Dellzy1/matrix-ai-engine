@@ -283,6 +283,21 @@ const error = res?.error;
     })
   );
     const weakResult = ranked.length > 0 && ranked[0].score < 60;
+      const summary = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const completed = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() !== "");
+    const awaiting = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() === "");
+    const upcoming = awaiting
+      .filter((m) => m.review_date && m.review_date >= today)
+      .sort((a, b) => (a.review_date > b.review_date ? 1 : -1));
+    return {
+      total: savedMatrices.length,
+      awaiting: awaiting.length,
+      completed: completed.length,
+      nextReview: upcoming[0]?.review_date ?? null,
+      recent: completed.slice(0, 3),
+    };
+  }, [savedMatrices]);
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -729,7 +744,39 @@ return (
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
-
+            
+            {user && (
+              <div className={`p-3 rounded-xl border text-xs space-y-2 ${surface}`}>
+                <p className="font-semibold text-slate-300">Your decisions</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-bold">{summary.total}</p>
+                    <p className="text-[10px] text-slate-400">Total</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{summary.awaiting}</p>
+                    <p className="text-[10px] text-slate-400">Awaiting review</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{summary.completed}</p>
+                    <p className="text-[10px] text-slate-400">Completed</p>
+                  </div>
+                </div>
+                {summary.nextReview && (
+                  <p className="text-slate-400">Next review: {summary.nextReview}</p>
+                )}
+                {summary.recent.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-slate-800">
+                    <p className="text-slate-400">Recent outcomes</p>
+                    {summary.recent.map((m) => (
+                      <p key={m.id} className="text-slate-300 break-words">
+                        <span className="font-semibold">{m.title}:</span> {m.actual_outcome}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               {!user ? (
                 <p className="text-xs text-slate-500 italic py-4">Sign in to see your saved decisions.</p>
