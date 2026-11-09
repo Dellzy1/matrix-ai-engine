@@ -3,6 +3,7 @@
 import { APP_NAME } from "@/lib/appConfig";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { explain } from "@/lib/explainRanking";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
@@ -1143,6 +1144,35 @@ return (
                         </li>
                       ))}
                     </ul>
+                           {(() => {
+                      const runnerUp = idx === 0 ? ranked[1] : undefined;
+                      const ex = explain(criteria, opt, runnerUp);
+                      return (
+                        <div className="pt-3 border-t border-slate-800 space-y-1.5 text-xs">
+                          <p className="font-semibold text-slate-300">Why it ranks here</p>
+                          {ex.top.map((t) => (
+                            <p key={t.criterionId} className="text-slate-400">
+                              {t.name} added {Math.round(t.points)} of {Math.round(t.maxPoints)} possible points.
+                            </p>
+                          ))}
+                          {ex.weak.map((w) => (
+                            <p key={w.criterionId} className="text-slate-500">
+                              Weakest: {w.name} gave {Math.round(w.points)} of {Math.round(w.maxPoints)}.
+                            </p>
+                          ))}
+                          {ex.gains.map((g) => (
+                            <p key={g.name} className="text-emerald-400">
+                              Ahead of the runner-up on {g.name} by {Math.round(g.diff)} points.
+                            </p>
+                          ))}
+                          {ex.losses.map((l) => (
+                            <p key={l.name} className="text-rose-400">
+                              Behind the runner-up on {l.name} by {Math.round(-l.diff)} points.
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
