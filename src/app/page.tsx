@@ -8,6 +8,7 @@ import {
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
 } from "lucide-react";
 import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
+import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -285,7 +286,19 @@ const error = res?.error;
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const suggestions = useMemo(
+    () =>
+      suggestCriteria(promptInput).filter(
+        (s) => !criteria.some((c) => c.name.toLowerCase() === s.name.toLowerCase())
+      ),
+    [promptInput, criteria]
+  );
 
+  const addSuggestion = (s: Suggestion) => {
+    const id = `crit_${uid()}`;
+    setCriteria((prev) => [...prev, { id, name: s.name, weight: 20, isInverted: s.isInverted }]);
+    setOptions((prev) => prev.map((o) => ({ ...o, scores: { ...o.scores, [id]: null } })));
+  };
   // Clears the draft so one account never sees another account's work.
   const resetDecisionForm = () => {
     setActiveDecisionId(null);
@@ -853,6 +866,21 @@ return (
                     placeholder="e.g. AWS vs GCP infrastructure"
                     className={`w-full ${field} border rounded-xl p-3 text-sm`}
                   />
+                                  {suggestions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-slate-400">Suggested criteria:</span>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.name}
+                        type="button"
+                        onClick={() => addSuggestion(s)}
+                        className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-900/40"
+                      >
+                        + {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold">Think about these before you score</label>
