@@ -243,6 +243,10 @@ useEffect(() => {
   const [promptInput, setPromptInput] = useState("");
   const [reason, setReason] = useState("");
     const [checkCategory, setCheckCategory] = useState<ChecklistCategory | "">("");
+      const [today, setToday] = useState("");
+  useEffect(() => {
+    setToday(new Date().toISOString().split("T")[0]);
+  }, []);
   const [criteria, setCriteria] = useState<Criterion[]>(DEFAULT_CRITERIA);
   const [options, setOptions] = useState<Option[]>(DEFAULT_OPTIONS);
   const [reviewDate, setReviewDate] = useState("");
@@ -297,7 +301,7 @@ const error = res?.error;
       nextReview: upcoming[0]?.review_date ?? null,
       recent: completed.slice(0, 3),
     };
-  }, [savedMatrices]);
+  }, [savedMatrices, today]);
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -744,7 +748,7 @@ return (
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
-            
+
             {user && (
               <div className={`p-3 rounded-xl border text-xs space-y-2 ${surface}`}>
                 <p className="font-semibold text-slate-300">Your decisions</p>
