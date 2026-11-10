@@ -176,6 +176,8 @@ export default function App() {
     useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+    const [lang, setLang] = useState<Lang>("en");
+  const t = STRINGS[lang];
   const isDark = theme === "dark";
   const surface = isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200";
   const field = isDark
@@ -678,6 +680,16 @@ return (
         </div>
 
         {/* Right side controls (Theme toggle & Auth) */}
+                    <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as Lang)}
+              className="px-2 py-1 rounded-lg border border-slate-700 text-xs bg-transparent"
+              aria-label="Choose language"
+            >
+              {(Object.keys(LANGUAGE_LABELS) as Lang[]).map((code) => (
+                <option key={code} value={code}>{LANGUAGE_LABELS[code]}</option>
+              ))}
+            </select>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
@@ -852,7 +864,7 @@ return (
                 Enter your own scores, weight what matters, save the decision, and record what happened later.
               </p>
                    <div className={`max-w-md mx-auto text-left text-sm space-y-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                <p className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>How it works</p>
+                <p className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>{t.howItWorks}</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Name the decision and list your options.</li>
                   <li>Add the criteria that matter, and score each option from 1 to 10.</li>
@@ -864,7 +876,7 @@ return (
                 onClick={handleStartNew}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl shadow-lg transition text-sm"
               >
-                Start a new decision
+                {t.startNew}
               </button>
             </div>
           )}
