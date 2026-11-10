@@ -5,9 +5,10 @@ import { Download, FileSpreadsheet, Printer, ChevronDown } from "lucide-react";
 
 interface ExportMenuProps {
   onExportCSV: () => void;
+  label: string;
 }
 
-export default function ExportMenu({ onExportCSV }: ExportMenuProps) {
+export default function ExportMenu({ onExportCSV, label }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +31,7 @@ export default function ExportMenu({ onExportCSV }: ExportMenuProps) {
         className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700 transition"
       >
         <Download className="w-3.5 h-3.5 text-indigo-400" />
-        <span>Export</span>
+        <span>{label}</span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 

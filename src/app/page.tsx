@@ -683,8 +683,7 @@ return (
                     <select
               value={lang}
               onChange={(e) => setLang(e.target.value as Lang)}
-              className="px-2 py-1 rounded-lg border border-slate-700 text-xs bg-transparent"
-              aria-label="Choose language"
+             className="px-2 py-1 rounded-lg border border-slate-700 text-xs bg-slate-900 text-slate-100"
             >
               {(Object.keys(LANGUAGE_LABELS) as Lang[]).map((code) => (
                 <option key={code} value={code}>{LANGUAGE_LABELS[code]}</option>
@@ -722,7 +721,7 @@ return (
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800"
                   >
-                    <LogOut className="w-3.5 h-3.5" /> Sign out
+                    <LogOut className="w-3.5 h-3.5" /> {t.signOut}
                   </button>
                   <button
                     onClick={() => {
@@ -731,7 +730,7 @@ return (
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-400 hover:bg-slate-800 border-t border-slate-800"
                   >
-                    Delete account
+                    {t.deleteAccount}
                   </button>
                 </div>
               )}
@@ -850,7 +849,7 @@ return (
               onClick={() => setIsSidebarOpen(true)}
               className="print:hidden flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-400"
             >
-              <History className="w-4 h-4" /> Open decision history
+              <History className="w-4 h-4" /> {t.history}
             </button>
           )}
 
@@ -900,7 +899,7 @@ return (
 
               <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 space-y-2">
                 <label htmlFor="template" className="block text-xs font-bold text-indigo-300 uppercase tracking-wider">
-                  Start from a template
+                  {t.templates}
                 </label>
                 <select
                   id="template"
@@ -922,7 +921,7 @@ return (
 
               <div className={`p-4 sm:p-6 rounded-2xl border ${surface} space-y-6`}>
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold">Decision title</label>
+                  <label className="block text-sm font-semibold">{t.decisionTitle}</label>
                   <input
                     type="text"
                     value={promptInput}
@@ -1111,7 +1110,7 @@ return (
                       : "bg-indigo-600 hover:bg-indigo-500 text-white"
                   }`}
                 >
-                  Calculate and view results
+                 {t.calculate} 
                 </button>
               </div>
             </div>
@@ -1130,16 +1129,16 @@ return (
                     onClick={() => setViewState("input")}
                     className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-amber-400" /> Edit
+                    <Edit3 className="w-3.5 h-3.5 text-amber-400" /> {t.edit}
                   </button>
-                  <ExportMenu onExportCSV={handleExportCSV} />
+                  <ExportMenu onExportCSV={handleExportCSV} label={t.exportCsv} />
                   <button
                     onClick={handleSaveMatrix}
                     disabled={saving}
                     className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-medium px-4 py-2 rounded-xl shadow"
                   >
                     <Save className="w-4 h-4" />
-                    {saving ? "Saving..." : activeDecisionId ? "Update vault" : "Save to vault"}
+                    {saving ? "Saving..." : activeDecisionId ? "{t.update}" : "{t.save}"}
                   </button>
                   {activeDecisionId && (
                     <button
@@ -1302,7 +1301,7 @@ return (
           )}
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold">
-                {authMode === "signin" ? "Sign in to your decision vault" : "Create your decision vault"}
+                {authMode === "signin" ? t.signIn : "Create your decision vault"}
               </h3>
               <button onClick={closeAuth} aria-label="Close">
                 <X className="w-4 h-4 text-slate-400" />
