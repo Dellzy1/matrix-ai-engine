@@ -1020,7 +1020,7 @@ return (
                           className={`w-16 ${field} border rounded-lg px-2 py-1 text-xs text-center`}
                         />
                       </label>
-                      <span className="text-[11px] text-slate-500 whitespace-nowrap">{shareOf(crit.weight)}% of total</span>
+                      <span className="text-[11px] text-slate-500 whitespace-nowrap">Importance: {shareOf(crit.weight)}%</span>
                       <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
                         <input
                           type="checkbox"
@@ -1163,6 +1163,9 @@ return (
                   No option scores strongly ({ranked[0].score}/100). Review your scores, or add another option, before you decide.
                 </div>
               )}
+                            <p className="text-[11px] text-slate-400">
+                Overall {ranked[0]?.score ?? 0}/100 = points earned from all criteria ÷ maximum possible × 100.
+              </p>
               <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-bold text-indigo-300">
                   <Brain className="w-4 h-4 text-indigo-400" /> Automatic check
