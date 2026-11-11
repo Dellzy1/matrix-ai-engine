@@ -1201,7 +1201,7 @@ return (
                         <li key={crit.id} className="flex justify-between gap-3 text-xs">
                           <span className="text-slate-400 break-words">
                             {crit.name || "Unnamed criterion"}
-                            {crit.isInverted ? " (lower is better)" : ""} · {shareOf(crit.weight)}% of total
+                            {crit.isInverted ? " (lower is better)" : ""} · Importance: {shareOf(crit.weight)}%
                           </span>
                           <span className="font-semibold text-slate-200 whitespace-nowrap">
                             {opt.scores[crit.id] ?? "–"}/10
