@@ -6,9 +6,12 @@ import { Download, FileSpreadsheet, Printer, ChevronDown } from "lucide-react";
 interface ExportMenuProps {
   onExportCSV: () => void;
   label: string;
+  csvLabel: string;
+  printLabel: string;
+  phoneHint: string;
 }
 
-export default function ExportMenu({ onExportCSV, label }: ExportMenuProps) {
+export default function ExportMenu({ onExportCSV, label, csvLabel, printLabel, phoneHint }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +53,7 @@ export default function ExportMenu({ onExportCSV, label }: ExportMenuProps) {
             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-700/60 transition-colors text-left"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>Download CSV (spreadsheet)</span>
+            <span>{csvLabel}</span>
           </button>
 
           <button
@@ -63,12 +66,10 @@ export default function ExportMenu({ onExportCSV, label }: ExportMenuProps) {
             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-700/60 transition-colors text-left"
           >
             <Printer className="w-4 h-4 text-sky-400" />
-            <span>Print / Save as PDF</span>
+            <span>{printLabel}</span>
           </button>
 
-          <p className="px-3 pt-1 pb-2 text-[10px] text-slate-500">
-            On phones, choose Save as PDF in the print preview.
-          </p>
+          <p className="px-3 pt-1 pb-2 text-[10px] text-slate-500">{phoneHint}</p>
         </div>
       )}
     </div>

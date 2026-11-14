@@ -8,7 +8,7 @@ import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
 } from "lucide-react";
-import { STRINGS, LANGUAGE_LABELS, type Lang } from "@/lib/i18n";
+import { STRINGS, LANGUAGE_LABELS, fmt, type Lang } from "@/lib/i18n";
 import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
@@ -17,6 +17,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
+type T = (typeof STRINGS)["en"];
 type Criterion = { id: string; name: string; weight: number; isInverted: boolean };
 type Option = { id: string; name: string; scores: Record<string, number | null> };
 type ScoredOption = Option & { score: number };
@@ -134,49 +135,53 @@ function scoreOptions(criteria: Criterion[], options: Option[]): ScoredOption[] 
     .sort((a, b) => b.score - a.score);
 }
 
-function validateDecision(title: string, criteria: Criterion[], options: Option[]): string | null {
-  if (!title.trim()) return "Add a title for this decision.";
-  if (criteria.length === 0) return "Add at least one criterion.";
-  if (criteria.some((c) => !c.name.trim())) return "Every criterion needs a name.";
-  if (criteria.reduce((sum, c) => sum + (c.weight || 0), 0) <= 0) return "Give at least one criterion a weight above 0%.";
-  if (options.length < 2) return "Add at least two options to compare.";
-  if (options.some((o) => !o.name.trim())) return "Every option needs a name.";
+function validateDecision(title: string, criteria: Criterion[], options: Option[], t: T): string | null {
+  if (!title.trim()) return t.vTitle;
+  if (criteria.length === 0) return t.vCriteria;
+  if (criteria.some((c) => !c.name.trim())) return t.vCriterionName;
+  if (criteria.reduce((sum, c) => sum + (c.weight || 0), 0) <= 0) return t.vWeight;
+  if (options.length < 2) return t.vOptions;
+  if (options.some((o) => !o.name.trim())) return t.vOptionName;
   const missingOrInvalid = options.some((o) =>
     criteria.some((c) => {
       const v = o.scores[c.id];
       return v == null || v < 1 || v > 10;
     })
   );
-  if (missingOrInvalid) return "Every score must be a number from 1 to 10.";
+  if (missingOrInvalid) return t.vScores;
   return null;
 }
 
 // Rule-based checks. These are not AI, and the UI labels them that way.
-function automaticChecks(criteria: Criterion[], ranked: Array<{ name: string; score: number }>): string[] {
+function automaticChecks(
+  criteria: Criterion[],
+  ranked: Array<{ name: string; score: number }>,
+  t: T
+): string[] {
   const notes: string[] = [];
   const total = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   const heaviest = [...criteria].sort((a, b) => b.weight - a.weight)[0];
   if (heaviest && total > 0 && heaviest.weight / total > 0.5) {
-    notes.push(`"${heaviest.name}" makes up more than half of the total weight, so the result depends mostly on it.`);
+    notes.push(fmt(t.chkHeavy, { name: heaviest.name }));
   }
   if (ranked.length > 1 && ranked[0].score - ranked[1].score <= 3) {
-    notes.push("The top two options are within 3 points. A small change in one score could change the winner.");
+    notes.push(t.chkClose);
   }
   if (criteria.length < 3) {
-    notes.push("Add at least three criteria so the result reflects more than one factor.");
+    notes.push(t.chkFewCriteria);
   }
   if (notes.length === 0) {
-    notes.push("No obvious imbalances found in the weights or the score spread.");
+    notes.push(t.chkOk);
   }
   return notes;
 }
 
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-    useEffect(() => {
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-    const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<Lang>("en");
   const t = STRINGS[lang];
   const isDark = theme === "dark";
   const surface = isDark ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200";
@@ -188,7 +193,7 @@ export default function App() {
   const [viewState, setViewState] = useState<"landing" | "input" | "results">("landing");
   const [notice, setNotice] = useState<Notice>(null);
 
-    const [accountOpen, setAccountOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,6 +205,7 @@ export default function App() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
   // Auth
   const [user, setUser] = useState<AuthUser | null>(null);
   const ownerRef = useRef<string | null>(null);
@@ -207,15 +213,14 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
-  // --- PASTE IT RIGHT HERE ---
   const [workspaceBranding, setWorkspaceBranding] = useState({
     company_name: "MatrixAI Engine",
     logo_url: "",
   });
 
-useEffect(() => {
+  useEffect(() => {
     async function fetchBranding() {
-      if (!supabase) return; // <--- Add this line right here
+      if (!supabase) return;
       try {
         const { data } = await supabase
           .from("matrices")
@@ -245,8 +250,8 @@ useEffect(() => {
   const [activeDecisionId, setActiveDecisionId] = useState<string | null>(null);
   const [promptInput, setPromptInput] = useState("");
   const [reason, setReason] = useState("");
-    const [checkCategory, setCheckCategory] = useState<ChecklistCategory | "">("");
-      const [today, setToday] = useState("");
+  const [checkCategory, setCheckCategory] = useState<ChecklistCategory | "">("");
+  const [today, setToday] = useState("");
   useEffect(() => {
     setToday(new Date().toISOString().split("T")[0]);
   }, []);
@@ -258,29 +263,27 @@ useEffect(() => {
   const [savedMatrices, setSavedMatrices] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
- const handleForgotPassword = async () => {
-  if (!emailInput.trim()) {
-    setNotice({ type: "error", text: "Please enter your email address first." });
-    return;
-  }
-  
-const res = await supabase?.auth.resetPasswordForEmail(emailInput, {
-  redirectTo: `${window.location.origin}/reset-password`,
-});
-const error = res?.error;
+  const handleForgotPassword = async () => {
+    if (!emailInput.trim()) {
+      setNotice({ type: "error", text: t.forgotNeedEmail });
+      return;
+    }
 
-  if (error) {
-    setNotice({ type: "error", text: error.message });
-  } else {
-    setNotice({
-      type: "success",
-      text: "Password reset link sent! Check your inbox.",
+    const res = await supabase?.auth.resetPasswordForEmail(emailInput, {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
-  }
-};
+    const error = res?.error;
+
+    if (error) {
+      setNotice({ type: "error", text: error.message });
+    } else {
+      setNotice({ type: "success", text: t.forgotSent });
+    }
+  };
+
   // Derived values
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
-  const checks = useMemo(() => automaticChecks(criteria, ranked), [criteria, ranked]);
+  const checks = useMemo(() => automaticChecks(criteria, ranked, t), [criteria, ranked, t]);
   const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   const shareOf = (weight: number) => (totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0);
   const missingScores = options.some((o) =>
@@ -289,8 +292,8 @@ const error = res?.error;
       return v == null || v < 1 || v > 10;
     })
   );
-    const weakResult = ranked.length > 0 && ranked[0].score < 60;
-      const summary = useMemo(() => {
+  const weakResult = ranked.length > 0 && ranked[0].score < 60;
+  const summary = useMemo(() => {
     const completed = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() !== "");
     const awaiting = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() === "");
     const upcoming = awaiting
@@ -321,6 +324,7 @@ const error = res?.error;
     setCriteria((prev) => [...prev, { id, name: s.name, weight: 20, isInverted: s.isInverted }]);
     setOptions((prev) => prev.map((o) => ({ ...o, scores: { ...o.scores, [id]: null } })));
   };
+
   // Clears the draft so one account never sees another account's work.
   const resetDecisionForm = () => {
     setActiveDecisionId(null);
@@ -385,15 +389,15 @@ const error = res?.error;
 
   const handleAuthSubmit = async () => {
     if (!supabase) {
-      setAuthError("Supabase is not configured. Check your environment variables.");
+      setAuthError(t.authNotConfigured);
       return;
     }
     if (!emailInput.trim() || !passwordInput) {
-      setAuthError("Enter your email and password.");
+      setAuthError(t.authEnterFields);
       return;
     }
     if (authMode === "signup" && passwordInput.length < 6) {
-      setAuthError("Use at least 6 characters for your password.");
+      setAuthError(t.authPasswordLength);
       return;
     }
 
@@ -423,32 +427,31 @@ const error = res?.error;
           setEmailInput("");
           setShowAuthModal(false);
         } else {
-          setAuthSuccessMsg("Account created. Check your email for a confirmation link, then sign in here.");
+          setAuthSuccessMsg(t.authCreated);
           setAuthMode("signin");
         }
       }
     } catch (err: any) {
-      setAuthError(err?.message || "Sign-in failed. Please try again.");
+      setAuthError(err?.message || t.authFailed);
     } finally {
       setAuthLoading(false);
     }
   };
 
-    const handleDeleteAccount = async () => {
+  const handleDeleteAccount = async () => {
     if (!supabase || !user) return;
-    const confirmed = window.confirm(
-      "Delete your account and all your saved decisions? This cannot be undone."
-    );
+    const confirmed = window.confirm(t.deleteAccountConfirm);
     if (!confirmed) return;
 
     const { error } = await supabase.rpc("delete_my_account");
     if (error) {
-      showError(`Could not delete your account: ${error.message}`);
+      showError(`${t.deleteAccountFailed} ${error.message}`);
       return;
     }
     await supabase.auth.signOut();
-    setNotice({ type: "success", text: "Your account and decisions were deleted." });
+    setNotice({ type: "success", text: t.deleteAccountDone });
   };
+
   const handleSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
   };
@@ -473,7 +476,7 @@ const error = res?.error;
   };
 
   const handleLoadTemplate = (templateName: string) => {
-    const tmpl = DECISION_TEMPLATES.find((t) => t.name === templateName);
+    const tmpl = DECISION_TEMPLATES.find((item) => item.name === templateName);
     if (!tmpl) return;
     const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c }));
     setActiveDecisionId(null);
@@ -531,7 +534,7 @@ const error = res?.error;
       ...prev,
       {
         id: uid(),
-        name: `Option ${String.fromCharCode(65 + (prev.length % 26))}`,
+        name: `${t.optionWord} ${String.fromCharCode(65 + (prev.length % 26))}`,
         scores: blankScores(criteria),
       },
     ]);
@@ -542,7 +545,7 @@ const error = res?.error;
   };
 
   const handleCalculate = () => {
-    const problem = validateDecision(promptInput, criteria, options);
+    const problem = validateDecision(promptInput, criteria, options, t);
     if (problem) return showError(problem);
     setNotice(null);
     setViewState("results");
@@ -568,21 +571,21 @@ const error = res?.error;
     link.click();
     URL.revokeObjectURL(url);
   };
-  
+
   const handleDeleteMatrix = async () => {
     if (!supabase || !user || !activeDecisionId) return;
-    const confirmed = window.confirm("Delete this decision permanently? This can't be undone.");
+    const confirmed = window.confirm(t.deleteDecisionConfirm);
     if (!confirmed) return;
 
     const { error } = await supabase.from("matrices").delete().eq("id", activeDecisionId);
     if (error) {
-      showError(`Could not delete: ${error.message}`);
+      showError(`${t.deleteFailed} ${error.message}`);
       return;
     }
 
     setSavedMatrices((prev) => prev.filter((m) => m.id !== activeDecisionId));
     resetDecisionForm();
-    setNotice({ type: "success", text: "Decision deleted." });
+    setNotice({ type: "success", text: t.decisionDeleted });
   };
 
   const handleSaveMatrix = async () => {
@@ -590,7 +593,7 @@ const error = res?.error;
       openAuth("signin");
       return;
     }
-    const problem = validateDecision(promptInput, criteria, options);
+    const problem = validateDecision(promptInput, criteria, options, t);
     if (problem) return showError(problem);
 
     const hasOutcome = actualOutcome.trim().length > 0;
@@ -621,11 +624,7 @@ const error = res?.error;
       // RLS can block a write without returning an error, so an empty result counts as a failure.
       const row = data?.[0];
       if (!row) {
-        throw new Error(
-          activeDecisionId
-            ? "This decision could not be updated. Check that you are signed in as its owner."
-            : "The decision was not saved. Check your Row Level Security policies."
-        );
+        throw new Error(activeDecisionId ? t.notUpdated : t.notSaved);
       }
 
       setActiveDecisionId(row.id);
@@ -633,17 +632,17 @@ const error = res?.error;
         const exists = prev.some((m) => m.id === row.id);
         return exists ? prev.map((m) => (m.id === row.id ? row : m)) : [row, ...prev];
       });
-      setNotice({ type: "success", text: activeDecisionId ? "Changes saved." : "Decision saved to your vault." });
+      setNotice({ type: "success", text: activeDecisionId ? t.changesSaved : t.savedToVault });
       window.setTimeout(() => setNotice((n) => (n?.type === "success" ? null : n)), 3000);
     } catch (err: any) {
       const detail = [err?.message, err?.hint].filter(Boolean).join(" ");
-      showError(`Save failed: ${detail || "unknown error."}`);
+      showError(`${t.saveFailed} ${detail || t.unknownError}`);
     } finally {
       setSaving(false);
     }
   };
 
-return (
+  return (
     <div className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
       <style>{`
         @media print {
@@ -664,7 +663,7 @@ return (
             {workspaceBranding.logo_url ? (
               <img
                 src={workspaceBranding.logo_url}
-                alt="Workspace Logo"
+                alt={t.logoAlt}
                 className="w-8 h-8 object-contain rounded-lg border border-slate-700 bg-slate-900 p-0.5 group-hover:border-indigo-500 transition-colors"
               />
             ) : (
@@ -675,30 +674,31 @@ return (
             </h1>
           </a>
           <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
-            Production v1.2
+            {t.badgeProduction}
           </span>
         </div>
 
-        {/* Right side controls (Theme toggle & Auth) */}
-                    <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value as Lang)}
-             className="px-2 py-1 rounded-lg border border-slate-700 text-xs bg-slate-900 text-slate-100"
-            >
-              {(Object.keys(LANGUAGE_LABELS) as Lang[]).map((code) => (
-                <option key={code} value={code}>{LANGUAGE_LABELS[code]}</option>
-              ))}
-            </select>
+        {/* Right side controls (language, theme and auth) */}
+        <select
+          value={lang}
+          onChange={(e) => setLang(e.target.value as Lang)}
+          aria-label={t.languageLabel}
+          className="px-2 py-1 rounded-lg border border-slate-700 text-xs bg-slate-900 text-slate-100"
+        >
+          {(Object.keys(LANGUAGE_LABELS) as Lang[]).map((code) => (
+            <option key={code} value={code}>{LANGUAGE_LABELS[code]}</option>
+          ))}
+        </select>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setTheme(isDark ? "light" : "dark")}
             className="p-2 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
-            aria-label="Toggle theme"
+            aria-label={t.themeToggle}
           >
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
           </button>
 
-                   {user ? (
+          {user ? (
             <div className="relative" ref={accountRef}>
               <button
                 onClick={() => setAccountOpen((o) => !o)}
@@ -740,12 +740,11 @@ return (
               onClick={() => openAuth("signin")}
               className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
             >
-              <Lock className="w-3.5 h-3.5" /> Sign in
+              <Lock className="w-3.5 h-3.5" /> {t.signIn}
             </button>
           )}
         </div>
       </header>
-
 
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-73px)]">
         {/* History sidebar */}
@@ -754,35 +753,35 @@ return (
             className={`print:hidden w-full md:w-96 shrink-0 border-b md:border-b-0 md:border-r ${isDark ? "border-slate-800 bg-slate-900/40" : "border-slate-200 bg-white"} p-4 max-h-[70vh] md:max-h-none overflow-y-auto`}
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase font-semibold text-slate-400">Decision history</span>
-              <button onClick={() => setIsSidebarOpen(false)} aria-label="Close history">
+              <span className="text-xs uppercase font-semibold text-slate-400">{t.historyHeading}</span>
+              <button onClick={() => setIsSidebarOpen(false)} aria-label={t.closeHistory}>
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
 
             {user && (
               <div className={`p-3 rounded-xl border text-xs space-y-2 ${surface}`}>
-                <p className="font-semibold text-slate-300">Your decisions</p>
+                <p className="font-semibold text-slate-300">{t.yourDecisions}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-lg font-bold">{summary.total}</p>
-                    <p className="text-[10px] text-slate-400">Total</p>
+                    <p className="text-[10px] text-slate-400">{t.statTotal}</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold">{summary.awaiting}</p>
-                    <p className="text-[10px] text-slate-400">Awaiting review</p>
+                    <p className="text-[10px] text-slate-400">{t.statAwaiting}</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold">{summary.completed}</p>
-                    <p className="text-[10px] text-slate-400">Completed</p>
+                    <p className="text-[10px] text-slate-400">{t.statCompleted}</p>
                   </div>
                 </div>
                 {summary.nextReview && (
-                  <p className="text-slate-400">Next review: {summary.nextReview}</p>
+                  <p className="text-slate-400">{t.nextReview} {summary.nextReview}</p>
                 )}
                 {summary.recent.length > 0 && (
                   <div className="space-y-1 pt-2 border-t border-slate-800">
-                    <p className="text-slate-400">Recent outcomes</p>
+                    <p className="text-slate-400">{t.recentOutcomes}</p>
                     {summary.recent.map((m) => (
                       <p key={m.id} className="text-slate-300 break-words">
                         <span className="font-semibold">{m.title}:</span> {m.actual_outcome}
@@ -794,9 +793,9 @@ return (
             )}
             <div className="space-y-2">
               {!user ? (
-                <p className="text-xs text-slate-500 italic py-4">Sign in to see your saved decisions.</p>
+                <p className="text-xs text-slate-500 italic py-4">{t.signInToSee}</p>
               ) : savedMatrices.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-4">No decisions saved yet.</p>
+                <p className="text-xs text-slate-500 italic py-4">{t.noDecisions}</p>
               ) : (
                 savedMatrices.map((item) => {
                   const top = scoreOptions(
@@ -813,27 +812,27 @@ return (
                         <span
                           className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${item.actual_outcome ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}
                         >
-                          {item.actual_outcome ? "Reviewed" : "Pending review"}
+                          {item.actual_outcome ? t.reviewed : t.pendingReview}
                         </span>
                         <span className="text-[10px] text-slate-500">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : ""}
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString(lang) : ""}
                         </span>
                       </div>
                       <p className="font-bold text-indigo-300 break-words">{item.title}</p>
                       {top && (
                         <p className="text-slate-300">
-                          Top choice: {top.name} ({top.score}/100)
+                          {t.topChoiceLabel} {top.name} ({top.score}/100)
                         </p>
                       )}
-                      {item.reason && <p className="text-slate-400 break-words">Why: {item.reason}</p>}
+                      {item.reason && <p className="text-slate-400 break-words">{t.whyLabel} {item.reason}</p>}
                       <p className="flex items-center gap-1 text-[10px] text-slate-500">
-                        <Clock className="w-3 h-3" /> Review: {item.review_date || "not set"}
+                        <Clock className="w-3 h-3" /> {t.reviewLabel} {item.review_date || t.notSet}
                       </p>
                       {item.actual_outcome && (
-                        <p className="text-slate-400 break-words">Outcome: {item.actual_outcome}</p>
+                        <p className="text-slate-400 break-words">{t.outcomeLabel} {item.actual_outcome}</p>
                       )}
                       <span className="flex items-center gap-1 text-[10px] text-indigo-400">
-                        <Edit3 className="w-3 h-3" /> Open to edit
+                        <Edit3 className="w-3 h-3" /> {t.openToEdit}
                       </span>
                     </div>
                   );
@@ -857,18 +856,18 @@ return (
           {viewState === "landing" && (
             <div className="text-center space-y-6 py-12">
               <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                Decide with your criteria, then check the result
+                {t.landingTitle}
               </h2>
               <p className="text-slate-400 max-w-md mx-auto text-sm">
-                Enter your own scores, weight what matters, save the decision, and record what happened later.
+                {t.landingLead}
               </p>
-                   <div className={`max-w-md mx-auto text-left text-sm space-y-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+              <div className={`max-w-md mx-auto text-left text-sm space-y-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
                 <p className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>{t.howItWorks}</p>
                 <ol className="list-decimal list-inside space-y-1">
-                  <li>Name the decision and list your options.</li>
-                  <li>Add the criteria that matter, and score each option from 1 to 10.</li>
-                  <li>Save it and set a review date.</li>
-                  <li>Come back on that date and record what actually happened.</li>
+                  <li>{t.step1}</li>
+                  <li>{t.step2}</li>
+                  <li>{t.step3}</li>
+                  <li>{t.step4}</li>
                 </ol>
               </div>
               <button
@@ -888,11 +887,11 @@ return (
                   onClick={() => setViewState(activeDecisionId ? "results" : "landing")}
                   className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
                 >
-                  <ArrowLeft className="w-4 h-4" /> Back
+                  <ArrowLeft className="w-4 h-4" /> {t.back}
                 </button>
                 {activeDecisionId && (
                   <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-medium">
-                    Editing a saved decision
+                    {t.editingSaved}
                   </span>
                 )}
               </div>
@@ -908,15 +907,15 @@ return (
                   className={`w-full ${field} border rounded-xl p-2.5 text-xs font-medium`}
                 >
                   <option value="" disabled>
-                    Select a template...
+                    {t.selectTemplate}
                   </option>
-                  {DECISION_TEMPLATES.map((t) => (
-                    <option key={t.name} value={t.name}>
-                      {t.name}
+                  {DECISION_TEMPLATES.map((tpl) => (
+                    <option key={tpl.name} value={tpl.name}>
+                      {tpl.name}
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-400">Templates add criteria and option names. You enter the scores.</p>
+                <p className="text-[11px] text-slate-400">{t.templateHelp}</p>
               </div>
 
               <div className={`p-4 sm:p-6 rounded-2xl border ${surface} space-y-6`}>
@@ -926,33 +925,33 @@ return (
                     type="text"
                     value={promptInput}
                     onChange={(e) => setPromptInput(e.target.value)}
-                    placeholder="e.g. AWS vs GCP infrastructure"
+                    placeholder={t.titlePlaceholder}
                     className={`w-full ${field} border rounded-xl p-3 text-sm`}
                   />
-                                  {suggestions.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] text-slate-400">Suggested criteria:</span>
-                    {suggestions.map((s) => (
-                      <button
-                        key={s.name}
-                        type="button"
-                        onClick={() => addSuggestion(s)}
-                        className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-900/40"
-                      >
-                        + {s.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  {suggestions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] text-slate-400">{t.suggestedCriteria}</span>
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => addSuggestion(s)}
+                          className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-900/40"
+                        >
+                          + {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold">Think about these before you score</label>
+                  <label className="block text-sm font-semibold">{t.thinkBefore}</label>
                   <select
                     value={checkCategory}
                     onChange={(e) => setCheckCategory(e.target.value as ChecklistCategory)}
                     className={`w-full ${field} border rounded-xl p-2.5 text-xs`}
                   >
-                    <option value="">Choose a category (optional)</option>
+                    <option value="">{t.chooseCategory}</option>
                     {(Object.keys(CHECKLISTS) as ChecklistCategory[]).map((key) => (
                       <option key={key} value={key}>{CHECKLISTS[key].label}</option>
                     ))}
@@ -966,12 +965,12 @@ return (
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold">Why this matters (optional)</label>
+                  <label className="block text-sm font-semibold">{t.whyMattersOptional}</label>
                   <textarea
                     rows={2}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="What's at stake, and what would make this a good outcome?"
+                    placeholder={t.whyPlaceholder}
                     className={`w-full ${field} border rounded-xl p-3 text-xs`}
                   />
                 </div>
@@ -980,16 +979,16 @@ return (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-end justify-between gap-2">
                     <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Criteria</h3>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.criteria}</h3>
                       <p className={`text-[11px] ${totalWeight === 0 ? "text-rose-400" : "text-slate-400"}`}>
-                        Total weight: {totalWeight}%. Each criterion's share is shown below, so the weights don't need to add up to 100.
+                        {fmt(t.totalWeight, { total: totalWeight })}
                       </p>
                     </div>
                     <button
                       onClick={handleAddCriterion}
                       className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-indigo-300"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add criterion
+                      <Plus className="w-3.5 h-3.5" /> {t.addCriterion}
                     </button>
                   </div>
 
@@ -1001,12 +1000,12 @@ return (
                       <input
                         type="text"
                         value={crit.name}
-                        placeholder="Name this criterion"
+                        placeholder={t.nameCriterion}
                         onChange={(e) => updateCriterion(crit.id, { name: e.target.value })}
                         className={`flex-1 min-w-[10rem] ${field} border rounded-lg px-2.5 py-1.5 text-xs font-bold`}
                       />
                       <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        Weight %
+                        {t.weightPercent}
                         <input
                           type="number"
                           min={0}
@@ -1020,20 +1019,22 @@ return (
                           className={`w-16 ${field} border rounded-lg px-2 py-1 text-xs text-center`}
                         />
                       </label>
-                      <span className="text-[11px] text-slate-500 whitespace-nowrap">Importance: {shareOf(crit.weight)}%</span>
+                      <span className="text-[11px] text-slate-500 whitespace-nowrap">
+                        {t.importance} {shareOf(crit.weight)}%
+                      </span>
                       <label className="flex items-center gap-1.5 text-[11px] text-slate-400">
                         <input
                           type="checkbox"
                           checked={crit.isInverted}
                           onChange={(e) => updateCriterion(crit.id, { isInverted: e.target.checked })}
                         />
-                        Lower is better
+                        {t.lowerIsBetter}
                       </label>
                       <button
                         onClick={() => handleRemoveCriterion(crit.id)}
                         disabled={criteria.length <= 1}
                         className="text-rose-400 hover:text-rose-300 disabled:opacity-30 p-1"
-                        aria-label="Remove criterion"
+                        aria-label={t.removeCriterion}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1044,12 +1045,12 @@ return (
                 {/* Options and scores */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">Options and scores (1 to 10)</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.optionsAndScores}</h3>
                     <button
                       onClick={handleAddOption}
                       className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-indigo-300"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add option
+                      <Plus className="w-3.5 h-3.5" /> {t.addOption}
                     </button>
                   </div>
 
@@ -1059,7 +1060,7 @@ return (
                         <input
                           type="text"
                           value={opt.name}
-                          placeholder="Option name"
+                          placeholder={t.optionName}
                           onChange={(e) => updateOptionName(opt.id, e.target.value)}
                           className={`${field} border rounded-lg px-3 py-1.5 text-xs font-bold w-full max-w-xs`}
                         />
@@ -1067,7 +1068,7 @@ return (
                           onClick={() => handleRemoveOption(opt.id)}
                           disabled={options.length <= 2}
                           className="text-rose-400 hover:text-rose-300 disabled:opacity-30"
-                          aria-label="Remove option"
+                          aria-label={t.removeOption}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1077,8 +1078,8 @@ return (
                         {criteria.map((crit) => (
                           <label key={crit.id} className="space-y-1">
                             <span className="text-[10px] text-slate-400 block truncate">
-                              {crit.name || "Unnamed criterion"}
-                              {crit.isInverted ? " (lower is better)" : ""}
+                              {crit.name || t.unnamedCriterion}
+                              {crit.isInverted ? t.lowerIsBetterParen : ""}
                             </span>
                             <input
                               type="number"
@@ -1098,11 +1099,11 @@ return (
                 </div>
                 {missingScores && (
                   <p className="text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded-xl border border-rose-800">
-                    Some scores are still empty. Enter a number from 1 to 10 for every option and criterion before calculating.
+                    {t.scoresEmpty}
                   </p>
                 )}
                 <button
-                           onClick={handleCalculate}
+                  onClick={handleCalculate}
                   disabled={missingScores}
                   className={`w-full font-medium py-3 rounded-xl transition text-sm shadow ${
                     missingScores
@@ -1110,7 +1111,7 @@ return (
                       : "bg-indigo-600 hover:bg-indigo-500 text-white"
                   }`}
                 >
-                 {t.calculate} 
+                  {t.calculate}
                 </button>
               </div>
             </div>
@@ -1121,8 +1122,8 @@ return (
             <div className="space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-4">
                 <div className="space-y-1 min-w-0">
-                  <h2 className="text-2xl font-bold break-words">{promptInput.trim() || "Decision analysis"}</h2>
-                  {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">Saved in your vault</p>}
+                  <h2 className="text-2xl font-bold break-words">{promptInput.trim() || t.decisionAnalysis}</h2>
+                  {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">{t.savedInVault}</p>}
                 </div>
                 <div className="print:hidden flex flex-wrap gap-2">
                   <button
@@ -1131,49 +1132,53 @@ return (
                   >
                     <Edit3 className="w-3.5 h-3.5 text-amber-400" /> {t.edit}
                   </button>
-                  <ExportMenu onExportCSV={handleExportCSV} label={t.exportCsv} />
+                  <ExportMenu
+                    onExportCSV={handleExportCSV}
+                    label={t.exportCsv}
+                    csvLabel={t.exportCsvOption}
+                    printLabel={t.exportPrintOption}
+                    phoneHint={t.exportPhoneHint}
+                  />
                   <button
                     onClick={handleSaveMatrix}
                     disabled={saving}
                     className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-medium px-4 py-2 rounded-xl shadow"
                   >
                     <Save className="w-4 h-4" />
-                    {saving ? "Saving..." : activeDecisionId ? "{t.update}" : "{t.save}"}
+                    {saving ? t.saving : activeDecisionId ? t.update : t.save}
                   </button>
                   {activeDecisionId && (
                     <button
                       onClick={handleDeleteMatrix}
                       className="flex items-center gap-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-medium px-4 py-2 rounded-xl border border-rose-800"
                     >
-                      Delete
+                      {t.deleteDecision}
                     </button>
                   )}
                 </div>
-                
               </div>
 
               {reason.trim() && (
                 <div className={`p-3 rounded-xl border text-sm ${surface}`}>
-                  <span className="block text-xs font-bold text-slate-400 mb-1">Why this matters</span>
+                  <span className="block text-xs font-bold text-slate-400 mb-1">{t.whyMattersTitle}</span>
                   <span className="break-words">{reason}</span>
                 </div>
               )}
               {weakResult && (
                 <div className="p-3 rounded-xl border border-amber-700 bg-amber-950/40 text-amber-200 text-xs">
-                  No option scores strongly ({ranked[0].score}/100). Review your scores, or add another option, before you decide.
+                  {fmt(t.weakResult, { score: ranked[0].score })}
                 </div>
               )}
-                            <p className="text-[11px] text-slate-400">
-                Overall {ranked[0]?.score ?? 0}/100 = points earned from all criteria ÷ maximum possible × 100.
+              <p className="text-[11px] text-slate-400">
+                {fmt(t.overallFormula, { score: ranked[0]?.score ?? 0 })}
               </p>
               <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-bold text-indigo-300">
-                  <Brain className="w-4 h-4 text-indigo-400" /> Automatic check
+                  <Brain className="w-4 h-4 text-indigo-400" /> {t.automaticCheck}
                 </div>
                 {ranked[0] && (
                   <p>
-                    Highest weighted score: <strong>{ranked[0].name}</strong> at {ranked[0].score}/100. This comes from
-                    your weights and scores, not from an AI model.
+                    {fmt(t.highestScore, { name: ranked[0].name, score: ranked[0].score })}
                   </p>
                 )}
                 <ul className="list-disc list-inside text-slate-400 text-[11px] space-y-1">
@@ -1191,7 +1196,7 @@ return (
                   >
                     <div className="flex justify-between items-center">
                       <span className="text-xs uppercase font-bold text-indigo-400">
-                        {idx === 0 ? "Top choice" : `Rank ${idx + 1}`}
+                        {idx === 0 ? t.topChoice : fmt(t.rankN, { n: idx + 1 })}
                       </span>
                       <span className="text-lg font-extrabold">{opt.score}/100</span>
                     </div>
@@ -1200,8 +1205,8 @@ return (
                       {criteria.map((crit) => (
                         <li key={crit.id} className="flex justify-between gap-3 text-xs">
                           <span className="text-slate-400 break-words">
-                            {crit.name || "Unnamed criterion"}
-                            {crit.isInverted ? " (lower is better)" : ""} · Importance: {shareOf(crit.weight)}%
+                            {crit.name || t.unnamedCriterion}
+                            {crit.isInverted ? t.lowerIsBetterParen : ""} · {t.importance} {shareOf(crit.weight)}%
                           </span>
                           <span className="font-semibold text-slate-200 whitespace-nowrap">
                             {opt.scores[crit.id] ?? "–"}/10
@@ -1209,30 +1214,38 @@ return (
                         </li>
                       ))}
                     </ul>
-                           {(() => {
+                    {(() => {
                       const runnerUp = idx === 0 ? ranked[1] : undefined;
                       const ex = explain(criteria, opt, runnerUp);
                       return (
                         <div className="pt-3 border-t border-slate-800 space-y-1.5 text-xs">
-                          <p className="font-semibold text-slate-300">Why it ranks here</p>
-                          {ex.top.map((t) => (
-                            <p key={t.criterionId} className="text-slate-400">
-                              {t.name} added {Math.round(t.points)} of {Math.round(t.maxPoints)} possible points.
+                          <p className="font-semibold text-slate-300">{t.whyItRanks}</p>
+                          {ex.top.map((item) => (
+                            <p key={item.criterionId} className="text-slate-400">
+                              {fmt(t.addedPoints, {
+                                name: item.name,
+                                points: Math.round(item.points),
+                                max: Math.round(item.maxPoints),
+                              })}
                             </p>
                           ))}
                           {ex.weak.map((w) => (
                             <p key={w.criterionId} className="text-slate-500">
-                              Weakest: {w.name} gave {Math.round(w.points)} of {Math.round(w.maxPoints)}.
+                              {fmt(t.weakest, {
+                                name: w.name,
+                                points: Math.round(w.points),
+                                max: Math.round(w.maxPoints),
+                              })}
                             </p>
                           ))}
                           {ex.gains.map((g) => (
                             <p key={g.name} className="text-emerald-400">
-                              Ahead of the runner-up on {g.name} by {Math.round(g.diff)} points.
+                              {fmt(t.aheadRunnerUp, { name: g.name, n: Math.round(g.diff) })}
                             </p>
                           ))}
                           {ex.losses.map((l) => (
                             <p key={l.name} className="text-rose-400">
-                              Behind the runner-up on {l.name} by {Math.round(-l.diff)} points.
+                              {fmt(t.behindRunnerUp, { name: l.name, n: Math.round(-l.diff) })}
                             </p>
                           ))}
                         </div>
@@ -1244,11 +1257,11 @@ return (
 
               <div className={`p-6 rounded-2xl border space-y-4 ${surface}`}>
                 <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-400">
-                  <Calendar className="w-4 h-4" /> Review loop
+                  <Calendar className="w-4 h-4" /> {t.reviewLoop}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <label className="block text-xs text-slate-400 space-y-1">
-                    Review date
+                    {t.reviewDate}
                     <input
                       type="date"
                       value={reviewDate}
@@ -1257,56 +1270,58 @@ return (
                     />
                   </label>
                   <label className="block text-xs text-slate-400 space-y-1">
-                    What actually happened
+                    {t.actualOutcome}
                     <input
                       type="text"
                       value={actualOutcome}
                       onChange={(e) => setActualOutcome(e.target.value)}
-                      placeholder="Add this on or after the review date"
+                      placeholder={t.outcomePlaceholder}
                       className={`w-full ${field} border rounded-xl p-2.5 text-xs`}
                     />
                   </label>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Status: {actualOutcome.trim() ? "Reviewed" : "Pending"}. It updates when you save.
+                  {fmt(t.statusLine, {
+                    status: actualOutcome.trim() ? t.reviewed : t.statusPending,
+                  })}
                 </p>
               </div>
             </div>
           )}
         </main>
       </div>
-      
+
       <footer className="border-t border-slate-800 p-4 text-center text-xs text-slate-400 space-x-4">
-        <a href="/privacy" className="underline hover:text-slate-200">Privacy Policy</a>
-        <a href="/terms" className="underline hover:text-slate-200">Terms of Use</a>
-        <a href="mailto:decisionloop.help@gmail.com" className="underline hover:text-slate-200">Contact</a>
+        <a href="/privacy" className="underline hover:text-slate-200">{t.privacyPolicy}</a>
+        <a href="/terms" className="underline hover:text-slate-200">{t.termsOfUse}</a>
+        <a href="mailto:decisionloop.help@gmail.com" className="underline hover:text-slate-200">{t.contact}</a>
       </footer>
 
       {/* Auth modal */}
       {showAuthModal && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
-             {notice && (
-            <div
-              className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
-                notice.type === "error"
-                  ? "bg-rose-950/40 border-rose-800 text-rose-300"
-                  : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
-              }`}
-            >
-              {notice.type === "error" ? (
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-              )}
-              <span>{notice.text}</span>
-            </div>
-          )}
+            {notice && (
+              <div
+                className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                  notice.type === "error"
+                    ? "bg-rose-950/40 border-rose-800 text-rose-300"
+                    : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
+                }`}
+              >
+                {notice.type === "error" ? (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                )}
+                <span>{notice.text}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-bold">
-                {authMode === "signin" ? t.signIn : "Create your decision vault"}
+                {authMode === "signin" ? t.signIn : t.createVault}
               </h3>
-              <button onClick={closeAuth} aria-label="Close">
+              <button onClick={closeAuth} aria-label={t.close}>
                 <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
@@ -1316,13 +1331,13 @@ return (
                 onClick={() => openAuth("signin")}
                 className={`py-1.5 rounded-lg font-medium transition ${authMode === "signin" ? "bg-indigo-600 text-white" : "text-slate-400"}`}
               >
-                Sign in
+                {t.signIn}
               </button>
               <button
                 onClick={() => openAuth("signup")}
                 className={`py-1.5 rounded-lg font-medium transition ${authMode === "signup" ? "bg-indigo-600 text-white" : "text-slate-400"}`}
               >
-                Create account
+                {t.createAccount}
               </button>
             </div>
 
@@ -1338,7 +1353,7 @@ return (
 
             <input
               type="email"
-              placeholder="name@example.com"
+              placeholder={t.emailPlaceholder}
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               className={`w-full ${field} border rounded-xl p-2.5 text-xs`}
@@ -1347,27 +1362,27 @@ return (
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder={authMode === "signup" ? "Password (at least 6 characters)" : "Password"}
+                placeholder={authMode === "signup" ? t.passwordPlaceholderSignup : t.passwordPlaceholder}
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 className={`w-full ${field} border rounded-xl p-2.5 pr-10 text-xs`}
               />
               {authMode === "signin" && (
-  <div className="flex justify-end mt-1.5">
-    <button
-      type="button"
-      onClick={handleForgotPassword}
-      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-    >
-      Forgot password?
-    </button>
-  </div>
-)}
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    {t.forgotPassword}
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -1378,7 +1393,7 @@ return (
               disabled={authLoading}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white py-2.5 rounded-xl text-xs font-medium transition shadow-lg"
             >
-              {authLoading ? "Please wait..." : authMode === "signin" ? "Sign in" : "Create account"}
+              {authLoading ? t.pleaseWait : authMode === "signin" ? t.signIn : t.createAccount}
             </button>
           </div>
         </div>
