@@ -12,6 +12,7 @@ import { STRINGS, LANGUAGE_LABELS, fmt, type Lang } from "@/lib/i18n";
 import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
+import HomeDashboard from "./HomeDashboard";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -854,29 +855,11 @@ export default function App() {
 
           {/* Landing */}
           {viewState === "landing" && (
-            <div className="text-center space-y-6 py-12">
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {t.landingTitle}
-              </h2>
-              <p className="text-slate-400 max-w-md mx-auto text-sm">
-                {t.landingLead}
-              </p>
-              <div className={`max-w-md mx-auto text-left text-sm space-y-2 ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                <p className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>{t.howItWorks}</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>{t.step1}</li>
-                  <li>{t.step2}</li>
-                  <li>{t.step3}</li>
-                  <li>{t.step4}</li>
-                </ol>
-              </div>
-              <button
-                onClick={handleStartNew}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl shadow-lg transition text-sm"
-              >
-                {t.startNew}
-              </button>
-            </div>
+            <HomeDashboard
+              lang={lang}
+              onStartDecision={handleStartNew}
+              onOpenVault={() => setIsSidebarOpen(true)}
+            />
           )}
 
           {/* Input */}
