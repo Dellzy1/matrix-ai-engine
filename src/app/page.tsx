@@ -13,6 +13,8 @@ import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
 import HomeDashboard from "./HomeDashboard";
+import ActionPlan from "./ActionPlan";
+import { HOME_STRINGS } from "@/lib/homeStrings";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -191,7 +193,8 @@ export default function App() {
     : "bg-slate-50 border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [viewState, setViewState] = useState<"landing" | "input" | "results">("landing");
+  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan">("landing");
+  const [planOption, setPlanOption] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -463,6 +466,12 @@ export default function App() {
     setViewState("input");
   };
 
+  // Opens the Create Action Plan screen, optionally with the chosen option.
+  const openActionPlan = (option: string) => {
+    setPlanOption(option);
+    setViewState("plan");
+  };
+
   const handleLoadSavedDecision = (item: any) => {
     setActiveDecisionId(item.id ?? null);
     setPromptInput(item.title || "");
@@ -644,7 +653,14 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}>
+    <div
+      className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}
+      style={
+        viewState === "landing" && isDark
+          ? { backgroundImage: "url(/hero-bg.jpg)", backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }
+          : undefined
+      }
+    >
       <style>{`
         @media print {
           body { background: #ffffff !important; }
@@ -658,7 +674,7 @@ export default function App() {
       `}</style>
 
       {/* Header */}
-      <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-6 py-4 flex items-center justify-between`}>
+      <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 max-w-full`}>
         <div className="flex items-center gap-3">
           <a href="/settings/branding" className="flex items-center gap-3 group">
             {workspaceBranding.logo_url ? (
@@ -858,6 +874,7 @@ export default function App() {
             <HomeDashboard
               lang={lang}
               onStartDecision={handleStartNew}
+              onCreatePlan={() => openActionPlan("")}
               onOpenVault={() => setIsSidebarOpen(true)}
             />
           )}
@@ -1110,6 +1127,12 @@ export default function App() {
                 </div>
                 <div className="print:hidden flex flex-wrap gap-2">
                   <button
+                    onClick={() => openActionPlan(ranked[0]?.name ?? "")}
+                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-xl shadow"
+                  >
+                    {HOME_STRINGS[lang].playbook}
+                  </button>
+                  <button
                     onClick={() => setViewState("input")}
                     className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-700"
                   >
@@ -1270,6 +1293,15 @@ export default function App() {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Create Action Plan */}
+          {viewState === "plan" && (
+            <ActionPlan
+              lang={lang}
+              option={planOption}
+              onBack={() => setViewState(planOption ? "results" : "landing")}
+            />
           )}
         </main>
       </div>

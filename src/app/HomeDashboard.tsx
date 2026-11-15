@@ -12,22 +12,23 @@ type Props = {
   lang: Lang;
   onStartDecision: () => void;
   onOpenVault: () => void;
+  onCreatePlan: () => void;
 };
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
-export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Props) {
+export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCreatePlan }: Props) {
   const h = HOME_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
 
   const features = [
-    { key: "assistant", title: h.featAssistant, sub: h.featAssistantSub, icon: MessageSquare, color: "text-violet-300 bg-violet-500/20" },
-    { key: "solver", title: h.featSolver, sub: h.featSolverSub, icon: Lightbulb, color: "text-amber-300 bg-amber-500/20" },
-    { key: "growth", title: h.featGrowth, sub: h.featGrowthSub, icon: GraduationCap, color: "text-sky-300 bg-sky-500/20" },
-    { key: "business", title: h.featBusiness, sub: h.featBusinessSub, icon: Briefcase, color: "text-indigo-300 bg-indigo-500/20" },
-    { key: "creative", title: h.featCreative, sub: h.featCreativeSub, icon: Palette, color: "text-fuchsia-300 bg-fuchsia-500/20" },
-    { key: "calc", title: h.featCalc, sub: h.featCalcSub, icon: Scale, color: "text-emerald-300 bg-emerald-500/20" },
+    { key: "assistant", title: h.featAssistant, sub: h.featAssistantSub, img: "ai-assistant", color: "" },
+    { key: "solver", title: h.featSolver, sub: h.featSolverSub, img: "problem-solver", color: "" },
+    { key: "growth", title: h.featGrowth, sub: h.featGrowthSub, img: "growth-centre", color: "" },
+    { key: "business", title: h.featBusiness, sub: h.featBusinessSub, img: "business-builder", color: "" },
+    { key: "creative", title: h.featCreative, sub: h.featCreativeSub, img: "creative-studio", color: "" },
+    { key: "calc", title: h.featCalc, sub: h.featCalcSub, img: "decision-calculator", color: "" },
   ];
 
   const openFeature = (key: string, title: string) => {
@@ -38,8 +39,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Pr
   return (
     <div
       id="top"
-      className="relative overflow-hidden rounded-3xl text-slate-100 bg-[#070a1f]"
-      style={{ backgroundImage: "url(/hero-bg.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
+      className="relative overflow-hidden rounded-3xl text-slate-100"
     >
       <div className="flex">
         {/* Sidebar for tablet and computer */}
@@ -90,7 +90,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Pr
                   onClick={() => openFeature(f.key, f.title)}
                   className="flex flex-col items-center gap-2 rounded-xl bg-[#11163a]/80 p-3 text-center text-xs font-semibold"
                 >
-                  <span className={`rounded-xl p-2 ${f.color}`}><f.icon className="w-5 h-5" /></span>
+                  <img src={`/icons/${f.img}.png`} alt="" className="w-12 h-12 object-contain" />
                   {f.title}
                 </button>
               ))}
@@ -105,7 +105,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Pr
             </div>
             <button
               type="button"
-              onClick={() => setSoonTitle(h.playbook)}
+              onClick={onCreatePlan}
               className="shrink-0 rounded-full bg-white/10 p-2"
               aria-label={h.getStarted}
             >
@@ -127,7 +127,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Pr
                   onClick={() => openFeature(f.key, f.title)}
                   className={`text-left rounded-2xl ${panel} p-4 hover:border-indigo-400 transition space-y-2`}
                 >
-                  <span className={`inline-flex rounded-xl p-2.5 ${f.color}`}><f.icon className="w-5 h-5" /></span>
+                  <img src={`/icons/${f.img}.png`} alt="" className="w-16 h-16 object-contain" />
                   <p className="font-bold text-sm">{f.title}</p>
                   <p className="text-xs text-slate-400">{f.sub}</p>
                 </button>
@@ -146,7 +146,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault }: Pr
             </div>
             <button
               type="button"
-              onClick={() => setSoonTitle(h.playbook)}
+              onClick={onCreatePlan}
               className="shrink-0 rounded-xl border border-indigo-400/50 px-3 py-2 text-xs font-medium text-indigo-200 hover:bg-indigo-500/20"
             >
               {h.getStarted}
