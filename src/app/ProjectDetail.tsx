@@ -1,0 +1,588 @@
+"use client";
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ArrowLeft, ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-react";
+import { fmt, type Lang } from "@/lib/i18n";
+import { PLAN_STRINGS } from "@/lib/planStrings";
+import {
+  addNote,
+  addStage,
+  addTask,
+  calcProgress,
+  deleteNote,
+  deleteProject,
+  deleteStage,
+  deleteTask,
+  duplicateTask,
+  getProject,
+  renameStage,
+  setTaskStatus,
+  swapStages,
+  updateNote,
+  updateProject,
+  updateTask,
+  type Note,
+  type Priority,
+  type Project,
+  type Stage,
+  type Task,
+  type TaskStatus,
+} from "@/lib/projects";
+
+type Props = {
+  lang: Lang;
+  supabase: SupabaseClient | null;
+  userId: string | null;
+  projectId: string;
+  onBack: () => void;
+};
+
+type Result = { error: string | null };
+type TaskValues = {
+  title: string;
+  description: string;
+  priority: Priority;
+  status: TaskStatus;
+  start_date: string | null;
+  due_date: string | null;
+  stage_id: string | null;
+};
+
+const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
+const field =
+  "w-full rounded-xl bg-[#11163a]/80 border border-indigo-500/30 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-400";
+const primaryBtn =
+  "rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 px-3 py-1.5 text-xs font-medium text-white";
+const ghostBtn =
+  "rounded-lg border border-indigo-400/40 px-2.5 py-1.5 text-xs text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50";
+const dangerBtn =
+  "rounded-lg border border-rose-700/60 px-2.5 py-1.5 text-xs text-rose-300 hover:bg-rose-950/40 disabled:opacity-50";
+
+const PRIORITY_STYLE: Record<Priority, string> = {
+  low: "bg-emerald-500/20 text-emerald-200",
+  medium: "bg-amber-500/20 text-amber-200",
+  high: "bg-orange-500/20 text-orange-200",
+  urgent: "bg-rose-500/25 text-rose-200",
+};
+
+export default function ProjectDetail({ lang, supabase, userId, projectId, onBack }: Props) {
+  const t = PLAN_STRINGS[lang];
+  const [project, setProject] = useState<Project | null>(null);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Stops a second click from starting another save while one is still running.
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<Project>>({});
+  const [newStageTitle, setNewStageTitle] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [addingTaskFor, setAddingTaskFor] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteEditValue, setNoteEditValue] = useState("");
+
+  const reload = useCallback(async () => {
+    if (!supabase) return;
+    const res = await getProject(supabase, projectId);
+    setProject(res.project);
+    setStages(res.stages);
+    setTasks(res.tasks);
+    setNotes(res.notes);
+    setError(res.error);
+    setLoading(false);
+  }, [supabase, projectId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // Runs one database change, then reloads so the screen always shows what is saved.
+  const run = async (fn: () => Promise<Result>): Promise<boolean> => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    const res = await fn();
+    busyRef.current = false;
+    setBusy(false);
+    if (res.error) setError(res.error);
+    await reload();
+    return !res.error;
+  };
+
+  if (!supabase || !userId) {
+    return <p className="text-sm text-slate-400">{t.loading}</p>;
+  }
+  if (loading || !project) {
+    return (
+      <div className="space-y-4">
+        <button type="button" onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400">
+          <ArrowLeft className="w-4 h-4" /> {t.back}
+        </button>
+        <p className="text-sm text-slate-400">{error ?? t.loading}</p>
+      </div>
+    );
+  }
+
+  const progress = calcProgress(tasks);
+  const nextPosition = (stageId: string | null) => {
+    const inStage = tasks.filter((x) => x.stage_id === stageId).map((x) => x.position);
+    return inStage.length ? Math.max(...inStage) + 1 : 0;
+  };
+
+  // ---- Project details ----
+  const startEdit = () => {
+    setDraft({
+      title: project.title,
+      description: project.description,
+      goal: project.goal,
+      expected_result: project.expected_result,
+      success_measure: project.success_measure,
+      category: project.category,
+      start_date: project.start_date,
+      due_date: project.due_date,
+    });
+    setEditing(true);
+  };
+
+  const saveProjectEdits = async () => {
+    if (!draft.title?.trim()) return setError(t.needTitle);
+    if (draft.start_date && draft.due_date && draft.due_date < draft.start_date) return setError(t.dateOrder);
+    const ok = await run(() =>
+      updateProject(supabase, project.id, {
+        title: draft.title!.trim(),
+        description: draft.description ?? "",
+        goal: draft.goal ?? "",
+        expected_result: draft.expected_result ?? "",
+        success_measure: draft.success_measure ?? "",
+        category: draft.category ?? "Other",
+        start_date: draft.start_date || null,
+        due_date: draft.due_date || null,
+      }),
+    );
+    if (ok) setEditing(false);
+  };
+
+  const startPlan = () => run(() => updateProject(supabase, project.id, { status: "active" }));
+
+  const removeProject = async () => {
+    if (!window.confirm(t.confirmDeleteProject)) return;
+    const res = await deleteProject(supabase, project.id);
+    if (res.error) return setError(res.error);
+    onBack();
+  };
+
+  // ---- Stages ----
+  const createStage = async () => {
+    const title = newStageTitle.trim();
+    if (!title) return;
+    const ok = await run(() => addStage(supabase, project.id, title, stages.length ? Math.max(...stages.map((s) => s.position)) + 1 : 0));
+    if (ok) setNewStageTitle("");
+  };
+
+  const saveRename = async (stage: Stage) => {
+    const title = renameValue.trim();
+    if (!title) return;
+    const ok = await run(() => renameStage(supabase, stage.id, title));
+    if (ok) setRenamingId(null);
+  };
+
+  const removeStage = (stage: Stage) => {
+    if (!window.confirm(t.confirmDeleteStage)) return;
+    run(() => deleteStage(supabase, stage.id));
+  };
+
+  const moveStage = (index: number, direction: -1 | 1) => {
+    const other = stages[index + direction];
+    if (!other) return;
+    run(() => swapStages(supabase, stages[index], other));
+  };
+
+  // ---- Tasks ----
+  const createTask = async (stageId: string, values: TaskValues) => {
+    const ok = await run(() =>
+      addTask(supabase, project.id, {
+        title: values.title,
+        description: values.description,
+        priority: values.priority,
+        status: values.status,
+        stage_id: stageId,
+        start_date: values.start_date,
+        due_date: values.due_date,
+        position: nextPosition(stageId),
+      }),
+    );
+    if (ok) setAddingTaskFor(null);
+  };
+
+  const saveTask = async (taskId: string, values: TaskValues) => {
+    const ok = await run(() =>
+      updateTask(supabase, taskId, {
+        title: values.title,
+        description: values.description,
+        priority: values.priority,
+        status: values.status,
+        stage_id: values.stage_id,
+        start_date: values.start_date,
+        due_date: values.due_date,
+      }),
+    );
+    if (ok) setEditingTaskId(null);
+  };
+
+  const changeStatus = (task: Task, status: TaskStatus) => run(() => setTaskStatus(supabase, task.id, status));
+
+  const copyTask = (task: Task) => run(() => duplicateTask(supabase, task, nextPosition(task.stage_id)));
+
+  const removeTask = (task: Task) => {
+    if (!window.confirm(t.confirmDeleteTask)) return;
+    run(() => deleteTask(supabase, task.id));
+  };
+
+  // ---- Notes ----
+  const saveNewNote = async () => {
+    const content = noteDraft.trim();
+    if (!content || !userId) return;
+    const ok = await run(() => addNote(supabase, project.id, userId, content));
+    if (ok) setNoteDraft("");
+  };
+
+  const saveNoteEdit = async (note: Note) => {
+    const content = noteEditValue.trim();
+    if (!content) return;
+    const ok = await run(() => updateNote(supabase, note.id, content));
+    if (ok) setEditingNoteId(null);
+  };
+
+  const removeNote = (note: Note) => {
+    if (!window.confirm(t.confirmDeleteNote)) return;
+    run(() => deleteNote(supabase, note.id));
+  };
+
+  const statusLabel: Record<TaskStatus, string> = {
+    not_started: t.tsNotStarted,
+    in_progress: t.tsInProgress,
+    completed: t.tsCompleted,
+    blocked: t.tsBlocked,
+  };
+  const priorityLabel: Record<Priority, string> = {
+    low: t.priorityLow,
+    medium: t.priorityMedium,
+    high: t.priorityHigh,
+    urgent: t.priorityUrgent,
+  };
+
+  return (
+    <div className="space-y-6 text-slate-100">
+      <button type="button" onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
+        <ArrowLeft className="w-4 h-4" /> {t.back}
+      </button>
+
+      {error && <p className="text-sm text-rose-300">{error}</p>}
+
+      {/* Overview */}
+      <section className={`${panel} p-5 space-y-4`}>
+        {!editing ? (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <h2 className="text-xl sm:text-2xl font-bold break-words">{project.title}</h2>
+                {project.description && <p className="text-sm text-slate-300 break-words">{project.description}</p>}
+              </div>
+              <button type="button" onClick={startEdit} disabled={busy} className={ghostBtn}>
+                <Pencil className="inline w-3 h-3 mr-1" />{t.edit}
+              </button>
+            </div>
+
+            <div className="grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+              {project.goal && <p><span className="text-slate-400">{t.fieldGoal}: </span>{project.goal}</p>}
+              {project.expected_result && <p><span className="text-slate-400">{t.fieldExpected} </span>{project.expected_result}</p>}
+              {project.success_measure && <p><span className="text-slate-400">{t.fieldMeasure} </span>{project.success_measure}</p>}
+              {project.selected_option && <p>{project.selected_option}</p>}
+              <p><span className="text-slate-400">{t.startDate}: </span>{project.start_date || t.noDeadline}</p>
+              <p><span className="text-slate-400">{t.deadlineDate}: </span>{project.due_date || t.noDeadline}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>{t.progress}</span>
+                <span className="font-bold text-indigo-300">{progress.percent}%</span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-violet-500 transition-all" style={{ width: `${progress.percent}%` }} />
+              </div>
+              <p className="text-xs text-slate-400">
+                {fmt(t.tasksDone, { done: progress.done, total: progress.total })} · {fmt(t.remaining, { count: progress.remaining })}
+              </p>
+            </div>
+
+            {project.status === "draft" && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-200">
+                <span className="flex-1">{t.draftNotice}</span>
+                <button type="button" onClick={startPlan} disabled={busy} className={primaryBtn}>{t.startPlan}</button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-3">
+            <h3 className="font-bold">{t.editFormTitle}</h3>
+            <input className={field} value={draft.title ?? ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t.fieldTitle} maxLength={200} />
+            <textarea className={field} rows={2} value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t.fieldDescription} />
+            <input className={field} value={draft.goal ?? ""} onChange={(e) => setDraft({ ...draft, goal: e.target.value })} placeholder={t.fieldGoal} />
+            <input className={field} value={draft.expected_result ?? ""} onChange={(e) => setDraft({ ...draft, expected_result: e.target.value })} placeholder={t.fieldExpected} />
+            <input className={field} value={draft.success_measure ?? ""} onChange={(e) => setDraft({ ...draft, success_measure: e.target.value })} placeholder={t.fieldMeasure} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input type="date" className={field} value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} aria-label={t.fieldStart} />
+              <input type="date" className={field} value={draft.due_date ?? ""} onChange={(e) => setDraft({ ...draft, due_date: e.target.value })} aria-label={t.fieldDue} />
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={saveProjectEdits} disabled={busy} className={primaryBtn}>{busy ? t.saving : t.saveChanges}</button>
+              <button type="button" onClick={() => setEditing(false)} className={ghostBtn}>{t.cancel}</button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Stages and tasks */}
+      <section className="space-y-4">
+        <h3 className="text-base font-bold">{t.stagesHeading}</h3>
+
+        {stages.map((stage, index) => {
+          const stageTasks = tasks.filter((x) => x.stage_id === stage.id).sort((a, b) => a.position - b.position);
+          return (
+            <div key={stage.id} className={`${panel} p-4 space-y-3`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {renamingId === stage.id ? (
+                  <div className="flex gap-2 flex-1 min-w-0">
+                    <input className={field} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} aria-label={t.newStageName} />
+                    <button type="button" onClick={() => saveRename(stage)} disabled={busy} className={primaryBtn}>{t.save}</button>
+                    <button type="button" onClick={() => setRenamingId(null)} className={ghostBtn}>{t.cancel}</button>
+                  </div>
+                ) : (
+                  <h4 className="font-bold break-words">{stage.title}</h4>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => moveStage(index, -1)} disabled={busy || index === 0} className={ghostBtn} aria-label={t.moveUp}>
+                    <ArrowUp className="w-3 h-3" />
+                  </button>
+                  <button type="button" onClick={() => moveStage(index, 1)} disabled={busy || index === stages.length - 1} className={ghostBtn} aria-label={t.moveDown}>
+                    <ArrowDown className="w-3 h-3" />
+                  </button>
+                  <button type="button" onClick={() => { setRenamingId(stage.id); setRenameValue(stage.title); }} disabled={busy} className={ghostBtn}>
+                    {t.rename}
+                  </button>
+                  <button type="button" onClick={() => removeStage(stage)} disabled={busy} className={dangerBtn}>
+                    {t.deleteStage}
+                  </button>
+                </div>
+              </div>
+
+              {stageTasks.length === 0 && addingTaskFor !== stage.id && (
+                <p className="text-xs text-slate-500">{t.emptyStage}</p>
+              )}
+
+              <ul className="space-y-2">
+                {stageTasks.map((task) =>
+                  editingTaskId === task.id ? (
+                    <li key={task.id}>
+                      <TaskForm
+                        lang={lang}
+                        stages={stages}
+                        initial={task}
+                        busy={busy}
+                        onSave={(values) => saveTask(task.id, values)}
+                        onCancel={() => setEditingTaskId(null)}
+                      />
+                    </li>
+                  ) : (
+                    <li key={task.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${PRIORITY_STYLE[task.priority]}`}>
+                              {priorityLabel[task.priority]}
+                            </span>
+                            <span className={`text-xs ${task.status === "completed" ? "line-through text-slate-500" : "text-slate-200"}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                          {task.description && <p className="text-xs text-slate-400 break-words">{task.description}</p>}
+                          <p className="text-[11px] text-slate-500">
+                            {t.startDate}: {task.start_date || t.noDeadline} · {t.deadlineDate}: {task.due_date || t.noDeadline} · {statusLabel[task.status]}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {task.status === "completed" ? (
+                            <button type="button" onClick={() => changeStatus(task, "in_progress")} disabled={busy} className={ghostBtn}>{t.reopen}</button>
+                          ) : (
+                            <button type="button" onClick={() => changeStatus(task, "completed")} disabled={busy} className={primaryBtn}>{t.markDone}</button>
+                          )}
+                          <button type="button" onClick={() => setEditingTaskId(task.id)} disabled={busy} className={ghostBtn}>{t.edit}</button>
+                          <button type="button" onClick={() => copyTask(task)} disabled={busy} className={ghostBtn} aria-label={t.duplicate}>
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          <button type="button" onClick={() => removeTask(task)} disabled={busy} className={dangerBtn} aria-label={t.deleteTask}>
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ),
+                )}
+              </ul>
+
+              {addingTaskFor === stage.id ? (
+                <TaskForm
+                  lang={lang}
+                  stages={stages}
+                  initial={{ stage_id: stage.id }}
+                  busy={busy}
+                  onSave={(values) => createTask(stage.id, values)}
+                  onCancel={() => setAddingTaskFor(null)}
+                />
+              ) : (
+                <button type="button" onClick={() => setAddingTaskFor(stage.id)} disabled={busy} className={ghostBtn}>
+                  + {t.addTask}
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="flex flex-wrap gap-2">
+          <input
+            className={`${field} max-w-xs`}
+            value={newStageTitle}
+            onChange={(e) => setNewStageTitle(e.target.value)}
+            placeholder={t.newStageName}
+            maxLength={120}
+            aria-label={t.newStageName}
+          />
+          <button type="button" onClick={createStage} disabled={busy || !newStageTitle.trim()} className={primaryBtn}>
+            + {t.addStage}
+          </button>
+        </div>
+      </section>
+
+      {/* Notes */}
+      <section className={`${panel} p-5 space-y-3`}>
+        <h3 className="font-bold">{t.notes}</h3>
+        <textarea className={field} rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder={t.notePlaceholder} maxLength={5000} />
+        <button type="button" onClick={saveNewNote} disabled={busy || !noteDraft.trim()} className={primaryBtn}>{t.addNote}</button>
+
+        {notes.length === 0 ? (
+          <p className="text-xs text-slate-500">{t.noNotes}</p>
+        ) : (
+          <ul className="space-y-2">
+            {notes.map((note) => (
+              <li key={note.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
+                {editingNoteId === note.id ? (
+                  <>
+                    <textarea className={field} rows={2} value={noteEditValue} onChange={(e) => setNoteEditValue(e.target.value)} maxLength={5000} />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => saveNoteEdit(note)} disabled={busy} className={primaryBtn}>{t.save}</button>
+                      <button type="button" onClick={() => setEditingNoteId(null)} className={ghostBtn}>{t.cancel}</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setEditingNoteId(note.id); setNoteEditValue(note.content); }} disabled={busy} className={ghostBtn}>{t.edit}</button>
+                      <button type="button" onClick={() => removeNote(note)} disabled={busy} className={dangerBtn}>{t.deleteNote}</button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Delete plan */}
+      <div className="flex justify-end">
+        <button type="button" onClick={removeProject} disabled={busy} className={dangerBtn}>{t.deleteProject}</button>
+      </div>
+    </div>
+  );
+}
+
+// Used for adding a task (initial has only stage_id) and editing one (initial is the full task).
+function TaskForm({
+  lang, stages, initial, busy, onSave, onCancel,
+}: {
+  lang: Lang;
+  stages: Stage[];
+  initial: Partial<Task>;
+  busy: boolean;
+  onSave: (values: TaskValues) => void;
+  onCancel: () => void;
+}) {
+  const t = PLAN_STRINGS[lang];
+  const [title, setTitle] = useState(initial.title ?? "");
+  const [description, setDescription] = useState(initial.description ?? "");
+  const [priority, setPriority] = useState<Priority>(initial.priority ?? "medium");
+  const [status, setStatus] = useState<TaskStatus>(initial.status ?? "not_started");
+  const [startDate, setStartDate] = useState(initial.start_date ?? "");
+  const [dueDate, setDueDate] = useState(initial.due_date ?? "");
+  const [stageId, setStageId] = useState<string | null>(initial.stage_id ?? null);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    if (busy) return;
+    if (!title.trim()) return setError(t.taskNameRequired);
+    if (startDate && dueDate && dueDate < startDate) return setError(t.dateOrder);
+    setError(null);
+    onSave({
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      status,
+      start_date: startDate || null,
+      due_date: dueDate || null,
+      stage_id: stageId,
+    });
+  };
+
+  return (
+    <div className="rounded-xl border border-indigo-400/40 bg-[#11163a]/80 p-3 space-y-3">
+      <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t.taskName} maxLength={200} aria-label={t.taskName} />
+      <textarea className={field} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.taskDescription} aria-label={t.taskDescription} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <select className={field} value={priority} onChange={(e) => setPriority(e.target.value as Priority)} aria-label={t.priority}>
+          <option value="low">{t.priorityLow}</option>
+          <option value="medium">{t.priorityMedium}</option>
+          <option value="high">{t.priorityHigh}</option>
+          <option value="urgent">{t.priorityUrgent}</option>
+        </select>
+        <select className={field} value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} aria-label={t.status}>
+          <option value="not_started">{t.tsNotStarted}</option>
+          <option value="in_progress">{t.tsInProgress}</option>
+          <option value="completed">{t.tsCompleted}</option>
+          <option value="blocked">{t.tsBlocked}</option>
+        </select>
+        <input type="date" className={field} value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label={t.startDate} />
+        <input type="date" className={field} value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label={t.deadlineDate} />
+        <select className={`${field} sm:col-span-2`} value={stageId ?? ""} onChange={(e) => setStageId(e.target.value || null)} aria-label={t.moveTo}>
+          {stages.map((s) => (
+            <option key={s.id} value={s.id}>{s.title}</option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="text-xs text-rose-300">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={submit} disabled={busy} className={primaryBtn}>{busy ? t.saving : t.save}</button>
+        <button type="button" onClick={onCancel} className={ghostBtn}>{t.cancel}</button>
+      </div>
+    </div>
+  );
+}

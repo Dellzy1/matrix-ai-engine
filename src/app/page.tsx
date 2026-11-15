@@ -13,7 +13,7 @@ import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
 import HomeDashboard from "./HomeDashboard";
-import ActionPlan from "./ActionPlan";
+import ActionPlan, { type PlanSeed } from "./ActionPlan";
 import SettingsPanel from "./SettingsPanel";
 import VaultScreen from "./VaultScreen";
 import ProgressScreen from "./ProgressScreen";
@@ -200,7 +200,7 @@ export default function App() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress">("landing");
-  const [planOption, setPlanOption] = useState("");
+  const [planSeed, setPlanSeed] = useState<PlanSeed | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -474,8 +474,8 @@ export default function App() {
   };
 
   // Opens the Create Action Plan screen, optionally with the chosen option.
-  const openActionPlan = (option: string) => {
-    setPlanOption(option);
+  const openActionPlan = (seed: PlanSeed | null) => {
+    setPlanSeed(seed);
     setViewState("plan");
   };
 
@@ -896,7 +896,7 @@ export default function App() {
             <HomeDashboard
               lang={lang}
               onStartDecision={handleStartNew}
-              onCreatePlan={() => openActionPlan("")}
+              onCreatePlan={() => openActionPlan(null)}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}
               onOpenProgress={() => setViewState("progress")}
@@ -1151,7 +1151,14 @@ export default function App() {
                 </div>
                 <div className="print:hidden flex flex-wrap gap-2">
                   <button
-                    onClick={() => openActionPlan(ranked[0]?.name ?? "")}
+                    onClick={() =>
+                      openActionPlan({
+                        decisionId: activeDecisionId ?? null,
+                        title: promptInput.trim() || t.decisionAnalysis,
+                        selectedOption: ranked[0]?.name ?? "",
+                        reason: reason.trim(),
+                      })
+                    }
                     className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-xl shadow"
                   >
                     {HOME_STRINGS[lang].playbook}
@@ -1323,8 +1330,11 @@ export default function App() {
           {viewState === "plan" && (
             <ActionPlan
               lang={lang}
-              option={planOption}
-              onBack={() => setViewState(planOption ? "results" : "landing")}
+              supabase={supabase}
+              userId={user?.id ?? null}
+              seed={planSeed}
+              onSignIn={() => openAuth("signin")}
+              onBack={() => setViewState(planSeed ? "results" : "landing")}
             />
           )}
 
