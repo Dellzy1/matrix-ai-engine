@@ -24,6 +24,9 @@ type Tile = {
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
+// The most-used tools, shown first on phones.
+const QUICK_KEYS = ["calc", "plan", "vault"];
+
 export default function HomeDashboard({
   lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings,
 }: Props) {
@@ -31,6 +34,8 @@ export default function HomeDashboard({
   const x = TOOL_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
+  // On phones the full tools list stays hidden until "See all" is tapped.
+  const [showAllTools, setShowAllTools] = useState(false);
 
   // All tools, in the order of the mockup. Only calc, plan and vault open a working screen.
   const tiles: Tile[] = [
@@ -92,8 +97,37 @@ export default function HomeDashboard({
             />
           </section>
 
-          {/* Tools grid */}
-          <section id="features" className="space-y-3">
+          {/* Quick access for phones: only the most-used tools */}
+          <section className="md:hidden space-y-3">
+            <h3 className="text-sm font-bold">{h.quickAccess}</h3>
+            <div className={`grid grid-cols-3 gap-2 rounded-2xl ${panel} p-3`}>
+              {tiles
+                .filter((tile) => QUICK_KEYS.includes(tile.key))
+                .map((tile) => (
+                  <button
+                    key={tile.key}
+                    type="button"
+                    onClick={() => openTile(tile)}
+                    className="flex flex-col items-center gap-2 rounded-xl bg-[#11163a]/80 p-3 text-center text-xs font-semibold"
+                  >
+                    <img src={`/icons/${tile.img}.png`} alt="" className="w-12 h-12 object-contain" />
+                    <span className="leading-tight">{tile.title}</span>
+                  </button>
+                ))}
+            </div>
+            {!showAllTools && (
+              <button
+                type="button"
+                onClick={() => setShowAllTools(true)}
+                className="w-full rounded-xl border border-indigo-400/50 py-2.5 text-xs font-medium text-indigo-200 hover:bg-indigo-500/20"
+              >
+                {h.seeAll}
+              </button>
+            )}
+          </section>
+
+          {/* All tools: always on tablet and computer, on phones only after "See all" */}
+          <section id="features" className={`${showAllTools ? "block" : "hidden"} md:block space-y-3`}>
             <h3 className="text-base font-bold">{h.explore}</h3>
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {tiles.map((tile) => (
