@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
@@ -38,7 +38,7 @@ type Props = {
   onBack: () => void;
 };
 
-type Result = { error: string | null };
+type Done = { error: string | null };
 type TaskValues = {
   title: string;
   description: string;
@@ -75,10 +75,6 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Stops a second click from starting another save while one is still running.
-  const busyRef = useRef(false);
-  const [busy, setBusy] = useState(false);
-
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Project>>({});
   const [newStageTitle, setNewStageTitle] = useState("");
@@ -90,6 +86,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteEditValue, setNoteEditValue] = useState("");
 
+  // Fetches everything. Used on first load, and to recover if a background save fails.
   const reload = useCallback(async () => {
     if (!supabase) return;
     const res = await getProject(supabase, projectId);
@@ -105,18 +102,15 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     reload();
   }, [reload]);
 
-  // Runs one database change, then reloads so the screen always shows what is saved.
-  const run = async (fn: () => Promise<Result>): Promise<boolean> => {
-    if (busyRef.current) return false;
-    busyRef.current = true;
-    setBusy(true);
-    setError(null);
+  // The screen has already been updated. This saves in the background and only reloads if it fails.
+  const save = async (fn: () => Promise<Done>) => {
     const res = await fn();
-    busyRef.current = false;
-    setBusy(false);
-    if (res.error) setError(res.error);
-    await reload();
-    return !res.error;
+    if (res.error) {
+      setError(res.error);
+      await reload();
+      return false;
+    }
+    return true;
   };
 
   if (!supabase || !userId) {
@@ -154,25 +148,28 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     setEditing(true);
   };
 
-  const saveProjectEdits = async () => {
+  const saveProjectEdits = () => {
     if (!draft.title?.trim()) return setError(t.needTitle);
     if (draft.start_date && draft.due_date && draft.due_date < draft.start_date) return setError(t.dateOrder);
-    const ok = await run(() =>
-      updateProject(supabase, project.id, {
-        title: draft.title!.trim(),
-        description: draft.description ?? "",
-        goal: draft.goal ?? "",
-        expected_result: draft.expected_result ?? "",
-        success_measure: draft.success_measure ?? "",
-        category: draft.category ?? "Other",
-        start_date: draft.start_date || null,
-        due_date: draft.due_date || null,
-      }),
-    );
-    if (ok) setEditing(false);
+    const patch = {
+      title: draft.title.trim(),
+      description: draft.description ?? "",
+      goal: draft.goal ?? "",
+      expected_result: draft.expected_result ?? "",
+      success_measure: draft.success_measure ?? "",
+      category: draft.category ?? "Other",
+      start_date: draft.start_date || null,
+      due_date: draft.due_date || null,
+    };
+    setProject({ ...project, ...patch });
+    setEditing(false);
+    save(() => updateProject(supabase, project.id, patch));
   };
 
-  const startPlan = () => run(() => updateProject(supabase, project.id, { status: "active" }));
+  const startPlan = () => {
+    setProject({ ...project, status: "active" });
+    save(() => updateProject(supabase, project.id, { status: "active" }));
+  };
 
   const removeProject = async () => {
     if (!window.confirm(t.confirmDeleteProject)) return;
@@ -185,87 +182,105 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const createStage = async () => {
     const title = newStageTitle.trim();
     if (!title) return;
-    const ok = await run(() => addStage(supabase, project.id, title, stages.length ? Math.max(...stages.map((s) => s.position)) + 1 : 0));
-    if (ok) setNewStageTitle("");
+    const position = stages.length ? Math.max(...stages.map((s) => s.position)) + 1 : 0;
+    const res = await addStage(supabase, project.id, title, position);
+    if (res.error) return setError(res.error);
+    if (res.data) setStages((prev) => [...prev, res.data as Stage].sort((a, b) => a.position - b.position));
+    setNewStageTitle("");
   };
 
-  const saveRename = async (stage: Stage) => {
+  const saveRename = (stage: Stage) => {
     const title = renameValue.trim();
     if (!title) return;
-    const ok = await run(() => renameStage(supabase, stage.id, title));
-    if (ok) setRenamingId(null);
+    setStages((prev) => prev.map((s) => (s.id === stage.id ? { ...s, title } : s)));
+    setRenamingId(null);
+    save(() => renameStage(supabase, stage.id, title));
   };
 
   const removeStage = (stage: Stage) => {
     if (!window.confirm(t.confirmDeleteStage)) return;
-    run(() => deleteStage(supabase, stage.id));
+    setStages((prev) => prev.filter((s) => s.id !== stage.id));
+    setTasks((prev) => prev.filter((x) => x.stage_id !== stage.id));
+    save(() => deleteStage(supabase, stage.id));
   };
 
   const moveStage = (index: number, direction: -1 | 1) => {
-    const other = stages[index + direction];
-    if (!other) return;
-    run(() => swapStages(supabase, stages[index], other));
+    const a = stages[index];
+    const b = stages[index + direction];
+    if (!a || !b) return;
+    setStages((prev) =>
+      prev
+        .map((s) => (s.id === a.id ? { ...s, position: b.position } : s.id === b.id ? { ...s, position: a.position } : s))
+        .sort((x, y) => x.position - y.position),
+    );
+    save(() => swapStages(supabase, a, b));
   };
 
   // ---- Tasks ----
-  const createTask = async (stageId: string, values: TaskValues) => {
-    const ok = await run(() =>
-      addTask(supabase, project.id, {
-        title: values.title,
-        description: values.description,
-        priority: values.priority,
-        status: values.status,
-        stage_id: stageId,
-        start_date: values.start_date,
-        due_date: values.due_date,
-        position: nextPosition(stageId),
-      }),
-    );
-    if (ok) setAddingTaskFor(null);
+  // Each form returns true when it can close. A failed add keeps the form open so nothing is lost.
+  const createTask = async (stageId: string, values: TaskValues): Promise<boolean> => {
+    const res = await addTask(supabase, project.id, { ...values, stage_id: stageId, position: nextPosition(stageId) });
+    if (res.error) {
+      setError(res.error);
+      return false;
+    }
+    if (res.data) setTasks((prev) => [...prev, res.data as Task]);
+    setAddingTaskFor(null);
+    return true;
   };
 
-  const saveTask = async (taskId: string, values: TaskValues) => {
-    const ok = await run(() =>
-      updateTask(supabase, taskId, {
-        title: values.title,
-        description: values.description,
-        priority: values.priority,
-        status: values.status,
-        stage_id: values.stage_id,
-        start_date: values.start_date,
-        due_date: values.due_date,
-      }),
-    );
-    if (ok) setEditingTaskId(null);
+  const saveTask = (taskId: string, values: TaskValues): boolean => {
+    setTasks((prev) => prev.map((x) => (x.id === taskId ? { ...x, ...values } : x)));
+    setEditingTaskId(null);
+    save(() => updateTask(supabase, taskId, values));
+    return true;
   };
 
-  const changeStatus = (task: Task, status: TaskStatus) => run(() => setTaskStatus(supabase, task.id, status));
+  const changeStatus = (task: Task, status: TaskStatus) => {
+    setTasks((prev) =>
+      prev.map((x) =>
+        x.id === task.id
+          ? { ...x, status, completed_at: status === "completed" ? new Date().toISOString() : null }
+          : x,
+      ),
+    );
+    save(() => setTaskStatus(supabase, task.id, status));
+  };
 
-  const copyTask = (task: Task) => run(() => duplicateTask(supabase, task, nextPosition(task.stage_id)));
+  const copyTask = async (task: Task) => {
+    const res = await duplicateTask(supabase, task, nextPosition(task.stage_id));
+    if (res.error) return setError(res.error);
+    if (res.data) setTasks((prev) => [...prev, res.data as Task]);
+  };
 
   const removeTask = (task: Task) => {
     if (!window.confirm(t.confirmDeleteTask)) return;
-    run(() => deleteTask(supabase, task.id));
+    setTasks((prev) => prev.filter((x) => x.id !== task.id));
+    save(() => deleteTask(supabase, task.id));
   };
 
   // ---- Notes ----
   const saveNewNote = async () => {
     const content = noteDraft.trim();
     if (!content || !userId) return;
-    const ok = await run(() => addNote(supabase, project.id, userId, content));
-    if (ok) setNoteDraft("");
+    const res = await addNote(supabase, project.id, userId, content);
+    if (res.error) return setError(res.error);
+    if (res.data) setNotes((prev) => [res.data as Note, ...prev]);
+    setNoteDraft("");
   };
 
-  const saveNoteEdit = async (note: Note) => {
+  const saveNoteEdit = (note: Note) => {
     const content = noteEditValue.trim();
     if (!content) return;
-    const ok = await run(() => updateNote(supabase, note.id, content));
-    if (ok) setEditingNoteId(null);
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, content } : n)));
+    setEditingNoteId(null);
+    save(() => updateNote(supabase, note.id, content));
   };
 
   const removeNote = (note: Note) => {
     if (!window.confirm(t.confirmDeleteNote)) return;
-    run(() => deleteNote(supabase, note.id));
+    setNotes((prev) => prev.filter((n) => n.id !== note.id));
+    save(() => deleteNote(supabase, note.id));
   };
 
   const statusLabel: Record<TaskStatus, string> = {
@@ -298,7 +313,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                 <h2 className="text-xl sm:text-2xl font-bold break-words">{project.title}</h2>
                 {project.description && <p className="text-sm text-slate-300 break-words">{project.description}</p>}
               </div>
-              <button type="button" onClick={startEdit} disabled={busy} className={ghostBtn}>
+              <button type="button" onClick={startEdit} className={ghostBtn}>
                 <Pencil className="inline w-3 h-3 mr-1" />{t.edit}
               </button>
             </div>
@@ -328,7 +343,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
             {project.status === "draft" && (
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-3 text-xs text-amber-200">
                 <span className="flex-1">{t.draftNotice}</span>
-                <button type="button" onClick={startPlan} disabled={busy} className={primaryBtn}>{t.startPlan}</button>
+                <button type="button" onClick={startPlan} className={primaryBtn}>{t.startPlan}</button>
               </div>
             )}
           </>
@@ -345,7 +360,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
               <input type="date" className={field} value={draft.due_date ?? ""} onChange={(e) => setDraft({ ...draft, due_date: e.target.value })} aria-label={t.fieldDue} />
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={saveProjectEdits} disabled={busy} className={primaryBtn}>{busy ? t.saving : t.saveChanges}</button>
+              <button type="button" onClick={saveProjectEdits} className={primaryBtn}>{t.saveChanges}</button>
               <button type="button" onClick={() => setEditing(false)} className={ghostBtn}>{t.cancel}</button>
             </div>
           </div>
@@ -364,23 +379,23 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                 {renamingId === stage.id ? (
                   <div className="flex gap-2 flex-1 min-w-0">
                     <input className={field} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} aria-label={t.newStageName} />
-                    <button type="button" onClick={() => saveRename(stage)} disabled={busy} className={primaryBtn}>{t.save}</button>
+                    <button type="button" onClick={() => saveRename(stage)} className={primaryBtn}>{t.save}</button>
                     <button type="button" onClick={() => setRenamingId(null)} className={ghostBtn}>{t.cancel}</button>
                   </div>
                 ) : (
                   <h4 className="font-bold break-words">{stage.title}</h4>
                 )}
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => moveStage(index, -1)} disabled={busy || index === 0} className={ghostBtn} aria-label={t.moveUp}>
+                  <button type="button" onClick={() => moveStage(index, -1)} disabled={index === 0} className={ghostBtn} aria-label={t.moveUp}>
                     <ArrowUp className="w-3 h-3" />
                   </button>
-                  <button type="button" onClick={() => moveStage(index, 1)} disabled={busy || index === stages.length - 1} className={ghostBtn} aria-label={t.moveDown}>
+                  <button type="button" onClick={() => moveStage(index, 1)} disabled={index === stages.length - 1} className={ghostBtn} aria-label={t.moveDown}>
                     <ArrowDown className="w-3 h-3" />
                   </button>
-                  <button type="button" onClick={() => { setRenamingId(stage.id); setRenameValue(stage.title); }} disabled={busy} className={ghostBtn}>
+                  <button type="button" onClick={() => { setRenamingId(stage.id); setRenameValue(stage.title); }} className={ghostBtn}>
                     {t.rename}
                   </button>
-                  <button type="button" onClick={() => removeStage(stage)} disabled={busy} className={dangerBtn}>
+                  <button type="button" onClick={() => removeStage(stage)} className={dangerBtn}>
                     {t.deleteStage}
                   </button>
                 </div>
@@ -398,7 +413,6 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                         lang={lang}
                         stages={stages}
                         initial={task}
-                        busy={busy}
                         onSave={(values) => saveTask(task.id, values)}
                         onCancel={() => setEditingTaskId(null)}
                       />
@@ -422,15 +436,15 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {task.status === "completed" ? (
-                            <button type="button" onClick={() => changeStatus(task, "in_progress")} disabled={busy} className={ghostBtn}>{t.reopen}</button>
+                            <button type="button" onClick={() => changeStatus(task, "in_progress")} className={ghostBtn}>{t.reopen}</button>
                           ) : (
-                            <button type="button" onClick={() => changeStatus(task, "completed")} disabled={busy} className={primaryBtn}>{t.markDone}</button>
+                            <button type="button" onClick={() => changeStatus(task, "completed")} className={primaryBtn}>{t.markDone}</button>
                           )}
-                          <button type="button" onClick={() => setEditingTaskId(task.id)} disabled={busy} className={ghostBtn}>{t.edit}</button>
-                          <button type="button" onClick={() => copyTask(task)} disabled={busy} className={ghostBtn} aria-label={t.duplicate}>
+                          <button type="button" onClick={() => setEditingTaskId(task.id)} className={ghostBtn}>{t.edit}</button>
+                          <button type="button" onClick={() => copyTask(task)} className={ghostBtn} aria-label={t.duplicate}>
                             <Copy className="w-3 h-3" />
                           </button>
-                          <button type="button" onClick={() => removeTask(task)} disabled={busy} className={dangerBtn} aria-label={t.deleteTask}>
+                          <button type="button" onClick={() => removeTask(task)} className={dangerBtn} aria-label={t.deleteTask}>
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
@@ -445,12 +459,11 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                   lang={lang}
                   stages={stages}
                   initial={{ stage_id: stage.id }}
-                  busy={busy}
                   onSave={(values) => createTask(stage.id, values)}
                   onCancel={() => setAddingTaskFor(null)}
                 />
               ) : (
-                <button type="button" onClick={() => setAddingTaskFor(stage.id)} disabled={busy} className={ghostBtn}>
+                <button type="button" onClick={() => setAddingTaskFor(stage.id)} className={ghostBtn}>
                   + {t.addTask}
                 </button>
               )}
@@ -467,7 +480,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
             maxLength={120}
             aria-label={t.newStageName}
           />
-          <button type="button" onClick={createStage} disabled={busy || !newStageTitle.trim()} className={primaryBtn}>
+          <button type="button" onClick={createStage} disabled={!newStageTitle.trim()} className={primaryBtn}>
             + {t.addStage}
           </button>
         </div>
@@ -477,7 +490,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
       <section className={`${panel} p-5 space-y-3`}>
         <h3 className="font-bold">{t.notes}</h3>
         <textarea className={field} rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder={t.notePlaceholder} maxLength={5000} />
-        <button type="button" onClick={saveNewNote} disabled={busy || !noteDraft.trim()} className={primaryBtn}>{t.addNote}</button>
+        <button type="button" onClick={saveNewNote} disabled={!noteDraft.trim()} className={primaryBtn}>{t.addNote}</button>
 
         {notes.length === 0 ? (
           <p className="text-xs text-slate-500">{t.noNotes}</p>
@@ -489,7 +502,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                   <>
                     <textarea className={field} rows={2} value={noteEditValue} onChange={(e) => setNoteEditValue(e.target.value)} maxLength={5000} />
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => saveNoteEdit(note)} disabled={busy} className={primaryBtn}>{t.save}</button>
+                      <button type="button" onClick={() => saveNoteEdit(note)} className={primaryBtn}>{t.save}</button>
                       <button type="button" onClick={() => setEditingNoteId(null)} className={ghostBtn}>{t.cancel}</button>
                     </div>
                   </>
@@ -497,8 +510,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
                   <>
                     <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => { setEditingNoteId(note.id); setNoteEditValue(note.content); }} disabled={busy} className={ghostBtn}>{t.edit}</button>
-                      <button type="button" onClick={() => removeNote(note)} disabled={busy} className={dangerBtn}>{t.deleteNote}</button>
+                      <button type="button" onClick={() => { setEditingNoteId(note.id); setNoteEditValue(note.content); }} className={ghostBtn}>{t.edit}</button>
+                      <button type="button" onClick={() => removeNote(note)} className={dangerBtn}>{t.deleteNote}</button>
                     </div>
                   </>
                 )}
@@ -510,21 +523,21 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
 
       {/* Delete plan */}
       <div className="flex justify-end">
-        <button type="button" onClick={removeProject} disabled={busy} className={dangerBtn}>{t.deleteProject}</button>
+        <button type="button" onClick={removeProject} className={dangerBtn}>{t.deleteProject}</button>
       </div>
     </div>
   );
 }
 
 // Used for adding a task (initial has only stage_id) and editing one (initial is the full task).
+// onSave returns true when the form can close.
 function TaskForm({
-  lang, stages, initial, busy, onSave, onCancel,
+  lang, stages, initial, onSave, onCancel,
 }: {
   lang: Lang;
   stages: Stage[];
   initial: Partial<Task>;
-  busy: boolean;
-  onSave: (values: TaskValues) => void;
+  onSave: (values: TaskValues) => boolean | Promise<boolean>;
   onCancel: () => void;
 }) {
   const t = PLAN_STRINGS[lang];
@@ -536,13 +549,16 @@ function TaskForm({
   const [dueDate, setDueDate] = useState(initial.due_date ?? "");
   const [stageId, setStageId] = useState<string | null>(initial.stage_id ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const submit = () => {
-    if (busy) return;
+  const submit = async () => {
+    // A second click while saving does nothing, so the same task can't be added twice.
+    if (saving) return;
     if (!title.trim()) return setError(t.taskNameRequired);
     if (startDate && dueDate && dueDate < startDate) return setError(t.dateOrder);
     setError(null);
-    onSave({
+    setSaving(true);
+    const ok = await onSave({
       title: title.trim(),
       description: description.trim(),
       priority,
@@ -551,6 +567,7 @@ function TaskForm({
       due_date: dueDate || null,
       stage_id: stageId,
     });
+    if (!ok) setSaving(false);
   };
 
   return (
@@ -580,7 +597,7 @@ function TaskForm({
       </div>
       {error && <p className="text-xs text-rose-300">{error}</p>}
       <div className="flex gap-2">
-        <button type="button" onClick={submit} disabled={busy} className={primaryBtn}>{busy ? t.saving : t.save}</button>
+        <button type="button" onClick={submit} disabled={saving} className={primaryBtn}>{saving ? t.saving : t.save}</button>
         <button type="button" onClick={onCancel} className={ghostBtn}>{t.cancel}</button>
       </div>
     </div>

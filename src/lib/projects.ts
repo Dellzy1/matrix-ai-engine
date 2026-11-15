@@ -81,6 +81,8 @@ export type TaskInput = {
 
 // Every database call returns an error message instead of throwing, so screens can show it.
 type Done = { error: string | null };
+// Inserts also return the saved row, so the screen can show it without reloading everything.
+type WithData<T> = { data: T | null; error: string | null };
 
 const msg = (error: { message: string } | null) => (error ? error.message : null);
 
@@ -175,9 +177,13 @@ export async function deleteProject(sb: SupabaseClient, projectId: string): Prom
 
 // ---- Stages ----
 
-export async function addStage(sb: SupabaseClient, projectId: string, title: string, position: number): Promise<Done> {
-  const { error } = await sb.from("project_stages").insert([{ project_id: projectId, title, position }]);
-  return { error: msg(error) };
+export async function addStage(sb: SupabaseClient, projectId: string, title: string, position: number): Promise<WithData<Stage>> {
+  const { data, error } = await sb
+    .from("project_stages")
+    .insert([{ project_id: projectId, title, position }])
+    .select("*")
+    .single();
+  return { data: (data ?? null) as Stage | null, error: msg(error) };
 }
 
 export async function renameStage(sb: SupabaseClient, stageId: string, title: string): Promise<Done> {
@@ -202,11 +208,13 @@ export async function swapStages(sb: SupabaseClient, a: Stage, b: Stage): Promis
 
 // ---- Tasks ----
 
-export async function addTask(sb: SupabaseClient, projectId: string, input: TaskInput): Promise<Done> {
-  const { error } = await sb.from("project_tasks").insert([
-    { ...input, project_id: projectId, status: input.status ?? "not_started" },
-  ]);
-  return { error: msg(error) };
+export async function addTask(sb: SupabaseClient, projectId: string, input: TaskInput): Promise<WithData<Task>> {
+  const { data, error } = await sb
+    .from("project_tasks")
+    .insert([{ ...input, project_id: projectId, status: input.status ?? "not_started" }])
+    .select("*")
+    .single();
+  return { data: (data ?? null) as Task | null, error: msg(error) };
 }
 
 export async function updateTask(sb: SupabaseClient, taskId: string, patch: Partial<TaskInput>): Promise<Done> {
@@ -219,17 +227,15 @@ export async function updateTask(sb: SupabaseClient, taskId: string, patch: Part
 
 // Completing a task records when it was finished. Reopening clears it.
 export async function setTaskStatus(sb: SupabaseClient, taskId: string, status: TaskStatus): Promise<Done> {
-  return updateTask(sb, taskId, {
-    status,
-    // completed_at is not part of TaskInput, so it is set in a separate update below.
-  }).then(async (res) => {
-    if (res.error) return res;
-    const { error } = await sb
-      .from("project_tasks")
-      .update({ completed_at: status === "completed" ? new Date().toISOString() : null })
-      .eq("id", taskId);
-    return { error: msg(error) };
-  });
+  const { error } = await sb
+    .from("project_tasks")
+    .update({
+      status,
+      completed_at: status === "completed" ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", taskId);
+  return { error: msg(error) };
 }
 
 export async function deleteTask(sb: SupabaseClient, taskId: string): Promise<Done> {
@@ -237,29 +243,37 @@ export async function deleteTask(sb: SupabaseClient, taskId: string): Promise<Do
   return { error: msg(error) };
 }
 
-export async function duplicateTask(sb: SupabaseClient, task: Task, position: number): Promise<Done> {
-  const { error } = await sb.from("project_tasks").insert([
-    {
-      project_id: task.project_id,
-      stage_id: task.stage_id,
-      title: `${task.title} (2)`,
-      description: task.description,
-      priority: task.priority,
-      status: "not_started",
-      start_date: task.start_date,
-      due_date: task.due_date,
-      notes: task.notes,
-      position,
-    },
-  ]);
-  return { error: msg(error) };
+export async function duplicateTask(sb: SupabaseClient, task: Task, position: number): Promise<WithData<Task>> {
+  const { data, error } = await sb
+    .from("project_tasks")
+    .insert([
+      {
+        project_id: task.project_id,
+        stage_id: task.stage_id,
+        title: `${task.title} (2)`,
+        description: task.description,
+        priority: task.priority,
+        status: "not_started",
+        start_date: task.start_date,
+        due_date: task.due_date,
+        notes: task.notes,
+        position,
+      },
+    ])
+    .select("*")
+    .single();
+  return { data: (data ?? null) as Task | null, error: msg(error) };
 }
 
 // ---- Notes ----
 
-export async function addNote(sb: SupabaseClient, projectId: string, userId: string, content: string): Promise<Done> {
-  const { error } = await sb.from("project_notes").insert([{ project_id: projectId, user_id: userId, content }]);
-  return { error: msg(error) };
+export async function addNote(sb: SupabaseClient, projectId: string, userId: string, content: string): Promise<WithData<Note>> {
+  const { data, error } = await sb
+    .from("project_notes")
+    .insert([{ project_id: projectId, user_id: userId, content }])
+    .select("*")
+    .single();
+  return { data: (data ?? null) as Note | null, error: msg(error) };
 }
 
 export async function updateNote(sb: SupabaseClient, noteId: string, content: string): Promise<Done> {
