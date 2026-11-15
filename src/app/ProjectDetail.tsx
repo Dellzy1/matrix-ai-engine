@@ -5,7 +5,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
 import { PLAN_STRINGS } from "@/lib/planStrings";
+import { dueState, todayKey } from "@/lib/planDates";
 import {
+  addActivity,
   addNote,
   addStage,
   addTask,
@@ -16,12 +18,15 @@ import {
   deleteTask,
   duplicateTask,
   getProject,
+  listActivity,
   renameStage,
   setTaskStatus,
   swapStages,
   updateNote,
   updateProject,
   updateTask,
+  type Activity,
+  type ActivityType,
   type Note,
   type Priority,
   type Project,
@@ -29,6 +34,7 @@ import {
   type Task,
   type TaskStatus,
 } from "@/lib/projects";
+import { ActivityList, DailyView, DueBadge, WeeklyView } from "./ProjectViews";
 
 type Props = {
   lang: Lang;
@@ -38,6 +44,7 @@ type Props = {
   onBack: () => void;
 };
 
+type Tab = "plan" | "daily" | "weekly" | "activity";
 type Done = { error: string | null };
 type TaskValues = {
   title: string;
@@ -72,8 +79,10 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const [stages, setStages] = useState<Stage[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("plan");
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Project>>({});
@@ -102,6 +111,15 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     reload();
   }, [reload]);
 
+  // The activity history is loaded when its tab opens, so the plan itself loads quickly.
+  useEffect(() => {
+    if (tab !== "activity" || !supabase) return;
+    listActivity(supabase, projectId).then((res) => {
+      setActivity(res.data);
+      if (res.error) setError(res.error);
+    });
+  }, [tab, supabase, projectId]);
+
   // The screen has already been updated. This saves in the background and only reloads if it fails.
   const save = async (fn: () => Promise<Done>) => {
     const res = await fn();
@@ -128,9 +146,17 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   }
 
   const progress = calcProgress(tasks);
+  const today = todayKey();
+  const overdueCount = tasks.filter((x) => dueState(x.due_date, x.status, today) === "overdue").length;
+
   const nextPosition = (stageId: string | null) => {
     const inStage = tasks.filter((x) => x.stage_id === stageId).map((x) => x.position);
     return inStage.length ? Math.max(...inStage) + 1 : 0;
+  };
+
+  // Records what happened. Runs in the background; a failed log entry never blocks the user's work.
+  const log = (type: ActivityType, description: string, taskId: string | null = null) => {
+    addActivity(supabase, project.id, userId, taskId, type, description).catch(() => {});
   };
 
   // ---- Project details ----
@@ -163,6 +189,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     };
     setProject({ ...project, ...patch });
     setEditing(false);
+    log("project_updated", patch.title);
     save(() => updateProject(supabase, project.id, patch));
   };
 
@@ -186,6 +213,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     const res = await addStage(supabase, project.id, title, position);
     if (res.error) return setError(res.error);
     if (res.data) setStages((prev) => [...prev, res.data as Stage].sort((a, b) => a.position - b.position));
+    log("stage_added", title);
     setNewStageTitle("");
   };
 
@@ -201,6 +229,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     if (!window.confirm(t.confirmDeleteStage)) return;
     setStages((prev) => prev.filter((s) => s.id !== stage.id));
     setTasks((prev) => prev.filter((x) => x.stage_id !== stage.id));
+    log("stage_deleted", stage.title);
     save(() => deleteStage(supabase, stage.id));
   };
 
@@ -224,12 +253,19 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
       setError(res.error);
       return false;
     }
-    if (res.data) setTasks((prev) => [...prev, res.data as Task]);
+    if (res.data) {
+      setTasks((prev) => [...prev, res.data as Task]);
+      log("task_added", values.title, res.data.id);
+    }
     setAddingTaskFor(null);
     return true;
   };
 
   const saveTask = (taskId: string, values: TaskValues): boolean => {
+    const before = tasks.find((x) => x.id === taskId);
+    if (before && (before.due_date ?? null) !== values.due_date) {
+      log("deadline_changed", `${values.title}: ${values.due_date ?? t.noDeadline}`, taskId);
+    }
     setTasks((prev) => prev.map((x) => (x.id === taskId ? { ...x, ...values } : x)));
     setEditingTaskId(null);
     save(() => updateTask(supabase, taskId, values));
@@ -237,6 +273,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   };
 
   const changeStatus = (task: Task, status: TaskStatus) => {
+    if (status === "completed") log("task_completed", task.title, task.id);
+    else if (task.status === "completed") log("task_reopened", task.title, task.id);
     setTasks((prev) =>
       prev.map((x) =>
         x.id === task.id
@@ -247,15 +285,24 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     save(() => setTaskStatus(supabase, task.id, status));
   };
 
+  // Ticking a task in the daily or weekly view. Reopening sets it back to in progress, as the plan does.
+  const toggleTask = (task: Task) => {
+    changeStatus(task, task.status === "completed" ? "in_progress" : "completed");
+  };
+
   const copyTask = async (task: Task) => {
     const res = await duplicateTask(supabase, task, nextPosition(task.stage_id));
     if (res.error) return setError(res.error);
-    if (res.data) setTasks((prev) => [...prev, res.data as Task]);
+    if (res.data) {
+      setTasks((prev) => [...prev, res.data as Task]);
+      log("task_added", res.data.title, res.data.id);
+    }
   };
 
   const removeTask = (task: Task) => {
     if (!window.confirm(t.confirmDeleteTask)) return;
     setTasks((prev) => prev.filter((x) => x.id !== task.id));
+    log("task_deleted", task.title);
     save(() => deleteTask(supabase, task.id));
   };
 
@@ -295,6 +342,12 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
     high: t.priorityHigh,
     urgent: t.priorityUrgent,
   };
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "plan", label: t.tabPlan },
+    { key: "daily", label: t.tabDaily },
+    { key: "weekly", label: t.tabWeekly },
+    { key: "activity", label: t.tabActivity },
+  ];
 
   return (
     <div className="space-y-6 text-slate-100">
@@ -367,164 +420,209 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
         )}
       </section>
 
-      {/* Stages and tasks */}
-      <section className="space-y-4">
-        <h3 className="text-base font-bold">{t.stagesHeading}</h3>
-
-        {stages.map((stage, index) => {
-          const stageTasks = tasks.filter((x) => x.stage_id === stage.id).sort((a, b) => a.position - b.position);
-          return (
-            <div key={stage.id} className={`${panel} p-4 space-y-3`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {renamingId === stage.id ? (
-                  <div className="flex gap-2 flex-1 min-w-0">
-                    <input className={field} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} aria-label={t.newStageName} />
-                    <button type="button" onClick={() => saveRename(stage)} className={primaryBtn}>{t.save}</button>
-                    <button type="button" onClick={() => setRenamingId(null)} className={ghostBtn}>{t.cancel}</button>
-                  </div>
-                ) : (
-                  <h4 className="font-bold break-words">{stage.title}</h4>
-                )}
-                <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => moveStage(index, -1)} disabled={index === 0} className={ghostBtn} aria-label={t.moveUp}>
-                    <ArrowUp className="w-3 h-3" />
-                  </button>
-                  <button type="button" onClick={() => moveStage(index, 1)} disabled={index === stages.length - 1} className={ghostBtn} aria-label={t.moveDown}>
-                    <ArrowDown className="w-3 h-3" />
-                  </button>
-                  <button type="button" onClick={() => { setRenamingId(stage.id); setRenameValue(stage.title); }} className={ghostBtn}>
-                    {t.rename}
-                  </button>
-                  <button type="button" onClick={() => removeStage(stage)} className={dangerBtn}>
-                    {t.deleteStage}
-                  </button>
-                </div>
-              </div>
-
-              {stageTasks.length === 0 && addingTaskFor !== stage.id && (
-                <p className="text-xs text-slate-500">{t.emptyStage}</p>
-              )}
-
-              <ul className="space-y-2">
-                {stageTasks.map((task) =>
-                  editingTaskId === task.id ? (
-                    <li key={task.id}>
-                      <TaskForm
-                        lang={lang}
-                        stages={stages}
-                        initial={task}
-                        onSave={(values) => saveTask(task.id, values)}
-                        onCancel={() => setEditingTaskId(null)}
-                      />
-                    </li>
-                  ) : (
-                    <li key={task.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${PRIORITY_STYLE[task.priority]}`}>
-                              {priorityLabel[task.priority]}
-                            </span>
-                            <span className={`text-xs ${task.status === "completed" ? "line-through text-slate-500" : "text-slate-200"}`}>
-                              {task.title}
-                            </span>
-                          </div>
-                          {task.description && <p className="text-xs text-slate-400 break-words">{task.description}</p>}
-                          <p className="text-[11px] text-slate-500">
-                            {t.startDate}: {task.start_date || t.noDeadline} · {t.deadlineDate}: {task.due_date || t.noDeadline} · {statusLabel[task.status]}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {task.status === "completed" ? (
-                            <button type="button" onClick={() => changeStatus(task, "in_progress")} className={ghostBtn}>{t.reopen}</button>
-                          ) : (
-                            <button type="button" onClick={() => changeStatus(task, "completed")} className={primaryBtn}>{t.markDone}</button>
-                          )}
-                          <button type="button" onClick={() => setEditingTaskId(task.id)} className={ghostBtn}>{t.edit}</button>
-                          <button type="button" onClick={() => copyTask(task)} className={ghostBtn} aria-label={t.duplicate}>
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button type="button" onClick={() => removeTask(task)} className={dangerBtn} aria-label={t.deleteTask}>
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ),
-                )}
-              </ul>
-
-              {addingTaskFor === stage.id ? (
-                <TaskForm
-                  lang={lang}
-                  stages={stages}
-                  initial={{ stage_id: stage.id }}
-                  onSave={(values) => createTask(stage.id, values)}
-                  onCancel={() => setAddingTaskFor(null)}
-                />
-              ) : (
-                <button type="button" onClick={() => setAddingTaskFor(stage.id)} className={ghostBtn}>
-                  + {t.addTask}
-                </button>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="flex flex-wrap gap-2">
-          <input
-            className={`${field} max-w-xs`}
-            value={newStageTitle}
-            onChange={(e) => setNewStageTitle(e.target.value)}
-            placeholder={t.newStageName}
-            maxLength={120}
-            aria-label={t.newStageName}
-          />
-          <button type="button" onClick={createStage} disabled={!newStageTitle.trim()} className={primaryBtn}>
-            + {t.addStage}
-          </button>
+      {/* Overdue reminder, shown on every tab except Daily */}
+      {overdueCount > 0 && tab !== "daily" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-xs text-rose-200">
+          <span className="flex-1">{fmt(t.overdueBanner, { count: overdueCount })}</span>
+          <button type="button" onClick={() => setTab("daily")} className={primaryBtn}>{t.viewDaily}</button>
         </div>
-      </section>
+      )}
 
-      {/* Notes */}
-      <section className={`${panel} p-5 space-y-3`}>
-        <h3 className="font-bold">{t.notes}</h3>
-        <textarea className={field} rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder={t.notePlaceholder} maxLength={5000} />
-        <button type="button" onClick={saveNewNote} disabled={!noteDraft.trim()} className={primaryBtn}>{t.addNote}</button>
-
-        {notes.length === 0 ? (
-          <p className="text-xs text-slate-500">{t.noNotes}</p>
-        ) : (
-          <ul className="space-y-2">
-            {notes.map((note) => (
-              <li key={note.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
-                {editingNoteId === note.id ? (
-                  <>
-                    <textarea className={field} rows={2} value={noteEditValue} onChange={(e) => setNoteEditValue(e.target.value)} maxLength={5000} />
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => saveNoteEdit(note)} className={primaryBtn}>{t.save}</button>
-                      <button type="button" onClick={() => setEditingNoteId(null)} className={ghostBtn}>{t.cancel}</button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => { setEditingNoteId(note.id); setNoteEditValue(note.content); }} className={ghostBtn}>{t.edit}</button>
-                      <button type="button" onClick={() => removeNote(note)} className={dangerBtn}>{t.deleteNote}</button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Delete plan */}
-      <div className="flex justify-end">
-        <button type="button" onClick={removeProject} className={dangerBtn}>{t.deleteProject}</button>
+      {/* Tabs */}
+      <div role="tablist" className="flex flex-wrap gap-2">
+        {tabs.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.key}
+            onClick={() => setTab(item.key)}
+            className={`rounded-xl border px-3 py-1.5 text-xs font-medium ${
+              tab === item.key
+                ? "border-indigo-500 bg-indigo-600 text-white"
+                : "border-indigo-400/40 text-indigo-200 hover:bg-indigo-500/20"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
+
+      {tab === "daily" && (
+        <DailyView lang={lang} tasks={tasks} stages={stages} today={today} onToggle={toggleTask} />
+      )}
+
+      {tab === "weekly" && (
+        <WeeklyView lang={lang} tasks={tasks} stages={stages} today={today} onToggle={toggleTask} />
+      )}
+
+      {tab === "activity" && <ActivityList lang={lang} items={activity} />}
+
+      {tab === "plan" && (
+        <>
+          {/* Stages and tasks */}
+          <section className="space-y-4">
+            <h3 className="text-base font-bold">{t.stagesHeading}</h3>
+
+            {stages.map((stage, index) => {
+              const stageTasks = tasks.filter((x) => x.stage_id === stage.id).sort((a, b) => a.position - b.position);
+              return (
+                <div key={stage.id} className={`${panel} p-4 space-y-3`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {renamingId === stage.id ? (
+                      <div className="flex gap-2 flex-1 min-w-0">
+                        <input className={field} value={renameValue} onChange={(e) => setRenameValue(e.target.value)} aria-label={t.newStageName} />
+                        <button type="button" onClick={() => saveRename(stage)} className={primaryBtn}>{t.save}</button>
+                        <button type="button" onClick={() => setRenamingId(null)} className={ghostBtn}>{t.cancel}</button>
+                      </div>
+                    ) : (
+                      <h4 className="font-bold break-words">{stage.title}</h4>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button type="button" onClick={() => moveStage(index, -1)} disabled={index === 0} className={ghostBtn} aria-label={t.moveUp}>
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button type="button" onClick={() => moveStage(index, 1)} disabled={index === stages.length - 1} className={ghostBtn} aria-label={t.moveDown}>
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                      <button type="button" onClick={() => { setRenamingId(stage.id); setRenameValue(stage.title); }} className={ghostBtn}>
+                        {t.rename}
+                      </button>
+                      <button type="button" onClick={() => removeStage(stage)} className={dangerBtn}>
+                        {t.deleteStage}
+                      </button>
+                    </div>
+                  </div>
+
+                  {stageTasks.length === 0 && addingTaskFor !== stage.id && (
+                    <p className="text-xs text-slate-500">{t.emptyStage}</p>
+                  )}
+
+                  <ul className="space-y-2">
+                    {stageTasks.map((task) =>
+                      editingTaskId === task.id ? (
+                        <li key={task.id}>
+                          <TaskForm
+                            lang={lang}
+                            stages={stages}
+                            initial={task}
+                            onSave={(values) => saveTask(task.id, values)}
+                            onCancel={() => setEditingTaskId(null)}
+                          />
+                        </li>
+                      ) : (
+                        <li key={task.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${PRIORITY_STYLE[task.priority]}`}>
+                                  {priorityLabel[task.priority]}
+                                </span>
+                                {task.status !== "completed" && (
+                                  <DueBadge lang={lang} state={dueState(task.due_date, task.status, today)} />
+                                )}
+                                <span className={`text-xs ${task.status === "completed" ? "line-through text-slate-500" : "text-slate-200"}`}>
+                                  {task.title}
+                                </span>
+                              </div>
+                              {task.description && <p className="text-xs text-slate-400 break-words">{task.description}</p>}
+                              <p className="text-[11px] text-slate-500">
+                                {t.startDate}: {task.start_date || t.noDeadline} · {t.deadlineDate}: {task.due_date || t.noDeadline} · {statusLabel[task.status]}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {task.status === "completed" ? (
+                                <button type="button" onClick={() => changeStatus(task, "in_progress")} className={ghostBtn}>{t.reopen}</button>
+                              ) : (
+                                <button type="button" onClick={() => changeStatus(task, "completed")} className={primaryBtn}>{t.markDone}</button>
+                              )}
+                              <button type="button" onClick={() => setEditingTaskId(task.id)} className={ghostBtn}>{t.edit}</button>
+                              <button type="button" onClick={() => copyTask(task)} className={ghostBtn} aria-label={t.duplicate}>
+                                <Copy className="w-3 h-3" />
+                              </button>
+                              <button type="button" onClick={() => removeTask(task)} className={dangerBtn} aria-label={t.deleteTask}>
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+
+                  {addingTaskFor === stage.id ? (
+                    <TaskForm
+                      lang={lang}
+                      stages={stages}
+                      initial={{ stage_id: stage.id }}
+                      onSave={(values) => createTask(stage.id, values)}
+                      onCancel={() => setAddingTaskFor(null)}
+                    />
+                  ) : (
+                    <button type="button" onClick={() => setAddingTaskFor(stage.id)} className={ghostBtn}>
+                      + {t.addTask}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="flex flex-wrap gap-2">
+              <input
+                className={`${field} max-w-xs`}
+                value={newStageTitle}
+                onChange={(e) => setNewStageTitle(e.target.value)}
+                placeholder={t.newStageName}
+                maxLength={120}
+                aria-label={t.newStageName}
+              />
+              <button type="button" onClick={createStage} disabled={!newStageTitle.trim()} className={primaryBtn}>
+                + {t.addStage}
+              </button>
+            </div>
+          </section>
+
+          {/* Notes */}
+          <section className={`${panel} p-5 space-y-3`}>
+            <h3 className="font-bold">{t.notes}</h3>
+            <textarea className={field} rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder={t.notePlaceholder} maxLength={5000} />
+            <button type="button" onClick={saveNewNote} disabled={!noteDraft.trim()} className={primaryBtn}>{t.addNote}</button>
+
+            {notes.length === 0 ? (
+              <p className="text-xs text-slate-500">{t.noNotes}</p>
+            ) : (
+              <ul className="space-y-2">
+                {notes.map((note) => (
+                  <li key={note.id} className="rounded-xl border border-indigo-500/20 bg-[#11163a]/60 p-3 space-y-2">
+                    {editingNoteId === note.id ? (
+                      <>
+                        <textarea className={field} rows={2} value={noteEditValue} onChange={(e) => setNoteEditValue(e.target.value)} maxLength={5000} />
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => saveNoteEdit(note)} className={primaryBtn}>{t.save}</button>
+                          <button type="button" onClick={() => setEditingNoteId(null)} className={ghostBtn}>{t.cancel}</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => { setEditingNoteId(note.id); setNoteEditValue(note.content); }} className={ghostBtn}>{t.edit}</button>
+                          <button type="button" onClick={() => removeNote(note)} className={dangerBtn}>{t.deleteNote}</button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Delete plan */}
+          <div className="flex justify-end">
+            <button type="button" onClick={removeProject} className={dangerBtn}>{t.deleteProject}</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

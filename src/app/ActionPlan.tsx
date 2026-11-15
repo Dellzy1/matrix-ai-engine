@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Lock, Plus, Search, Target } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
 import { PLAN_STRINGS } from "@/lib/planStrings";
+import { dueState, todayKey } from "@/lib/planDates";
 import {
   CATEGORY_VALUES,
   calcProgress,
@@ -12,6 +13,7 @@ import {
   listProjects,
   type Project,
   type ProjectStatus,
+  type TaskRow,
   type TaskStatus,
 } from "@/lib/projects";
 import ProjectDetail from "./ProjectDetail";
@@ -76,7 +78,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
   const t = PLAN_STRINGS[lang];
   const [view, setView] = useState<View>(seed ? "new" : "list");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [taskRows, setTaskRows] = useState<{ project_id: string; status: TaskStatus }[]>([]);
+  const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | ProjectStatus>("all");
@@ -107,8 +109,16 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
     return map;
   }, [taskRows]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const isOverdue = (p: Project) => p.status === "active" && !!p.due_date && p.due_date < today;
+
+  // Overdue tasks per plan, shown as a pill on each card.
+  const overdueByProject = new Map<string, number>();
+  for (const row of taskRows) {
+    if (dueState(row.due_date, row.status, today) === "overdue") {
+      overdueByProject.set(row.project_id, (overdueByProject.get(row.project_id) ?? 0) + 1);
+    }
+  }
 
   const stats = {
     total: projects.length,
@@ -257,6 +267,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
           <ul className="grid gap-3 md:grid-cols-2">
             {visible.map((p) => {
               const progress = calcProgress(tasksByProject.get(p.id) ?? []);
+              const overdueTasks = overdueByProject.get(p.id) ?? 0;
               return (
                 <li key={p.id} className={`${panel} p-4 space-y-3`}>
                   <div className="flex items-start justify-between gap-3">
@@ -286,9 +297,16 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <p className={`text-xs ${isOverdue(p) ? "text-rose-300 font-semibold" : "text-slate-400"}`}>
-                      {t.deadline}: {p.due_date || t.noDeadline}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <p className={`text-xs ${isOverdue(p) ? "text-rose-300 font-semibold" : "text-slate-400"}`}>
+                        {t.deadline}: {p.due_date || t.noDeadline}
+                      </p>
+                      {overdueTasks > 0 && (
+                        <span className="rounded-full bg-rose-500/25 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
+                          {fmt(t.overdueCount, { count: overdueTasks })}
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setView({ projectId: p.id })}

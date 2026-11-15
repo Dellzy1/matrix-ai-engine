@@ -46,6 +46,9 @@ export type Task = {
   position: number;
 };
 
+// A task's status and deadline, as loaded for the plan list.
+export type TaskRow = { project_id: string; status: TaskStatus; due_date: string | null };
+
 export type Note = {
   id: string;
   project_id: string;
@@ -105,19 +108,19 @@ export async function listProjects(sb: SupabaseClient, userId: string) {
     .select("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
-  if (error) return { projects: [] as Project[], taskRows: [] as { project_id: string; status: TaskStatus }[], error: error.message };
+  if (error) return { projects: [] as Project[], taskRows: [] as TaskRow[], error: error.message };
 
   const projects = (data ?? []) as Project[];
-  if (projects.length === 0) return { projects, taskRows: [], error: null };
+  if (projects.length === 0) return { projects, taskRows: [] as TaskRow[], error: null };
 
-  // Only the columns needed for the progress bars are loaded here.
+  // Only the columns needed for the progress bars and overdue labels are loaded here.
   const { data: taskRows, error: taskError } = await sb
     .from("project_tasks")
-    .select("project_id,status")
+    .select("project_id,status,due_date")
     .in("project_id", projects.map((p) => p.id));
   return {
     projects,
-    taskRows: (taskRows ?? []) as { project_id: string; status: TaskStatus }[],
+    taskRows: (taskRows ?? []) as TaskRow[],
     error: msg(taskError),
   };
 }
@@ -153,6 +156,7 @@ export async function createProject(
   if (error || !data) return { project: null, error: msg(error) ?? "Could not create the plan." };
 
   const project = data as Project;
+  await addActivity(sb, project.id, userId, null, "project_created", project.title);
   if (stageNames.length > 0) {
     const { error: stageError } = await sb.from("project_stages").insert(
       stageNames.map((title, index) => ({ project_id: project.id, title, position: index })),
@@ -287,6 +291,52 @@ export async function updateNote(sb: SupabaseClient, noteId: string, content: st
 export async function deleteNote(sb: SupabaseClient, noteId: string): Promise<Done> {
   const { error } = await sb.from("project_notes").delete().eq("id", noteId);
   return { error: msg(error) };
+}
+
+// ---- Activity history ----
+
+export type ActivityType =
+  | "project_created"
+  | "project_updated"
+  | "task_added"
+  | "task_completed"
+  | "task_reopened"
+  | "task_deleted"
+  | "deadline_changed"
+  | "stage_added"
+  | "stage_deleted";
+
+export type Activity = {
+  id: string;
+  project_id: string;
+  task_id: string | null;
+  activity_type: ActivityType;
+  description: string;
+  created_at: string;
+};
+
+// Records an event. Failures are ignored so that a log entry never blocks the user's real work.
+export async function addActivity(
+  sb: SupabaseClient,
+  projectId: string,
+  userId: string,
+  taskId: string | null,
+  type: ActivityType,
+  description: string,
+): Promise<void> {
+  await sb.from("project_activity").insert([
+    { project_id: projectId, user_id: userId, task_id: taskId, activity_type: type, description },
+  ]);
+}
+
+export async function listActivity(sb: SupabaseClient, projectId: string): Promise<{ data: Activity[]; error: string | null }> {
+  const { data, error } = await sb
+    .from("project_activity")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  return { data: (data ?? []) as Activity[], error: msg(error) };
 }
 
 // ---- Progress ----
