@@ -14,7 +14,7 @@ export default function ConfirmedPage() {
           href="/"
           className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl"
         >
-          Go to MatrixAI Engine
+          Go to Decision Loop
         </Link>
         <p className="text-xs text-slate-500">You can also close this page.</p>
       </div>

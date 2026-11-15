@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
               Reset links only work for a short time and only once. Request a new one from the sign-in screen.
             </p>
             <Link href="/" className="inline-block text-sm text-indigo-300 underline">
-              Back to MatrixAI Engine
+              Back to Decision Loop
             </Link>
           </div>
         ) : !ready ? (

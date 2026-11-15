@@ -13,11 +13,12 @@ type Props = {
   onStartDecision: () => void;
   onOpenVault: () => void;
   onCreatePlan: () => void;
+  onOpenSettings: () => void;
 };
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
-export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCreatePlan }: Props) {
+export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCreatePlan, onOpenSettings }: Props) {
   const h = HOME_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
@@ -43,14 +44,14 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCr
     >
       <div className="flex">
         {/* Sidebar for tablet and computer */}
-        <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 ${panel} border-y-0 border-l-0`}>
+        <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 ${panel} border-y-0 border-l-0`}>
           <SideItem label={h.navHome} icon={Home} active href="#top" />
           <SideItem label={h.navAssistant} icon={MessageSquare} onClick={() => setSoonTitle(h.navAssistant)} />
           <SideItem label={h.navTools} icon={LayoutGrid} href="#features" />
           <SideItem label={h.navProgress} icon={BarChart3} onClick={onOpenVault} />
           <SideItem label={h.navVault} icon={ShieldCheck} onClick={onOpenVault} />
           <SideItem label={h.navCommunity} icon={Users} onClick={() => setSoonTitle(h.navCommunity)} />
-          <SideItem label={h.navSettings} icon={Settings} onClick={() => setSoonTitle(h.navSettings)} />
+          <SideItem label={h.navSettings} icon={Settings} onClick={onOpenSettings} />
         </aside>
 
         <div className="flex-1 min-w-0 p-4 sm:p-6 pb-28 md:pb-6 space-y-6">
@@ -168,7 +169,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCr
           <Sparkles className="w-5 h-5" />
         </button>
         <BottomItem label={h.navProgress} icon={BarChart3} onClick={onOpenVault} />
-        <BottomItem label={h.navMore} icon={MoreHorizontal} onClick={() => setSoonTitle(h.navMore)} />
+        <BottomItem label={h.navSettings} icon={Settings} onClick={onOpenSettings} />
       </nav>
 
       {/* Coming soon box */}

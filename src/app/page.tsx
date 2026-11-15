@@ -14,6 +14,9 @@ import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
 import HomeDashboard from "./HomeDashboard";
 import ActionPlan from "./ActionPlan";
+import SettingsPanel from "./SettingsPanel";
+import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
+import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -198,6 +201,7 @@ export default function App() {
   const [notice, setNotice] = useState<Notice>(null);
 
   const [accountOpen, setAccountOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -218,7 +222,7 @@ export default function App() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [workspaceBranding, setWorkspaceBranding] = useState({
-    company_name: "MatrixAI Engine",
+    company_name: "Decision Loop",
     logo_url: "",
   });
 
@@ -234,7 +238,7 @@ export default function App() {
 
         if (data && (data.company_name || data.logo_url)) {
           setWorkspaceBranding({
-            company_name: data.company_name || "MatrixAI Engine",
+            company_name: data.company_name || "Decision Loop",
             logo_url: data.logo_url || "",
           });
         }
@@ -656,7 +660,7 @@ export default function App() {
     <div
       className={`min-h-screen ${isDark ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"}`}
       style={
-        viewState === "landing" && isDark
+        isDark
           ? { backgroundImage: "url(/hero-bg.jpg)", backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }
           : undefined
       }
@@ -708,11 +712,11 @@ export default function App() {
         </select>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setTheme(isDark ? "light" : "dark")}
+            onClick={() => setIsSettingsOpen(true)}
             className="p-2 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors"
-            aria-label={t.themeToggle}
+            aria-label={SETTINGS_STRINGS[lang].title}
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+            <SettingsIcon className="w-4 h-4 text-slate-300" />
           </button>
 
           {user ? (
@@ -762,6 +766,21 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {isSettingsOpen && (
+        <SettingsPanel
+          isDark={isDark}
+          onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
+          onClose={() => setIsSettingsOpen(false)}
+          title={SETTINGS_STRINGS[lang].title}
+          close={SETTINGS_STRINGS[lang].close}
+          legal={SETTINGS_STRINGS[lang].legal}
+          themeLabel={t.themeToggle}
+          privacyLabel={t.privacyPolicy}
+          termsLabel={t.termsOfUse}
+          contactLabel={t.contact}
+        />
+      )}
 
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-73px)]">
         {/* History sidebar */}
@@ -875,6 +894,7 @@ export default function App() {
               lang={lang}
               onStartDecision={handleStartNew}
               onCreatePlan={() => openActionPlan("")}
+              onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setIsSidebarOpen(true)}
             />
           )}
@@ -1305,12 +1325,6 @@ export default function App() {
           )}
         </main>
       </div>
-
-      <footer className="border-t border-slate-800 p-4 text-center text-xs text-slate-400 space-x-4">
-        <a href="/privacy" className="underline hover:text-slate-200">{t.privacyPolicy}</a>
-        <a href="/terms" className="underline hover:text-slate-200">{t.termsOfUse}</a>
-        <a href="mailto:decisionloop.help@gmail.com" className="underline hover:text-slate-200">{t.contact}</a>
-      </footer>
 
       {/* Auth modal */}
       {showAuthModal && (
