@@ -1,54 +1,69 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Home, MessageSquare, LayoutGrid, BarChart3, ShieldCheck, Users, Settings,
-  Sparkles, MoreHorizontal, Lightbulb, GraduationCap, Briefcase, Palette, Scale, Target, X,
-} from "lucide-react";
+import { Home, LayoutGrid, BarChart3, ShieldCheck, Users, Settings, Sparkles, X } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import { HOME_STRINGS } from "@/lib/homeStrings";
+import { TOOL_STRINGS } from "@/lib/toolStrings";
 
 type Props = {
   lang: Lang;
   onStartDecision: () => void;
   onOpenVault: () => void;
+  onOpenProgress: () => void;
   onCreatePlan: () => void;
   onOpenSettings: () => void;
 };
 
+type Tile = {
+  key: string;
+  title: string;
+  img: string;
+  action: "calc" | "plan" | "vault" | "soon";
+};
+
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
-export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCreatePlan, onOpenSettings }: Props) {
+export default function HomeDashboard({
+  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings,
+}: Props) {
   const h = HOME_STRINGS[lang];
+  const x = TOOL_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
 
-  const features = [
-    { key: "assistant", title: h.featAssistant, sub: h.featAssistantSub, img: "ai-assistant", color: "" },
-    { key: "solver", title: h.featSolver, sub: h.featSolverSub, img: "problem-solver", color: "" },
-    { key: "growth", title: h.featGrowth, sub: h.featGrowthSub, img: "growth-centre", color: "" },
-    { key: "business", title: h.featBusiness, sub: h.featBusinessSub, img: "business-builder", color: "" },
-    { key: "creative", title: h.featCreative, sub: h.featCreativeSub, img: "creative-studio", color: "" },
-    { key: "calc", title: h.featCalc, sub: h.featCalcSub, img: "decision-calculator", color: "" },
+  // All tools, in the order of the mockup. Only calc, plan and vault open a working screen.
+  const tiles: Tile[] = [
+    { key: "assistant", title: h.featAssistant, img: "ai-assistant", action: "soon" },
+    { key: "solver", title: h.featSolver, img: "problem-solver", action: "soon" },
+    { key: "calc", title: h.featCalc, img: "decision-calculator", action: "calc" },
+    { key: "plan", title: h.playbook, img: "execution-playbook", action: "plan" },
+    { key: "marketing", title: x.marketing, img: "marketing-coach", action: "soon" },
+    { key: "opportunity", title: x.opportunity, img: "opportunity-finder", action: "soon" },
+    { key: "growth", title: h.featGrowth, img: "growth-centre", action: "soon" },
+    { key: "business", title: h.featBusiness, img: "business-builder", action: "soon" },
+    { key: "creative", title: h.featCreative, img: "creative-studio", action: "soon" },
+    { key: "accountability", title: x.accountability, img: "accountability-partner", action: "soon" },
+    { key: "journal", title: x.journal, img: "assumption-journal", action: "soon" },
+    { key: "vault", title: x.vault, img: "decision-vault", action: "vault" },
   ];
 
-  const openFeature = (key: string, title: string) => {
-    if (key === "calc") return onStartDecision();
-    setSoonTitle(title);
+  const openTile = (tile: Tile) => {
+    if (tile.action === "calc") return onStartDecision();
+    if (tile.action === "plan") return onCreatePlan();
+    if (tile.action === "vault") return onOpenVault();
+    setSoonTitle(tile.title);
   };
 
   return (
-    <div
-      id="top"
-      className="relative overflow-hidden rounded-3xl text-slate-100"
-    >
+    <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100">
       <div className="flex">
         {/* Sidebar for tablet and computer */}
         <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 ${panel} border-y-0 border-l-0`}>
           <SideItem label={h.navHome} icon={Home} active href="#top" />
-          <SideItem label={h.navAssistant} icon={MessageSquare} onClick={() => setSoonTitle(h.navAssistant)} />
+          <SideItem label={h.navAssistant} icon={Sparkles} onClick={() => setSoonTitle(h.navAssistant)} />
           <SideItem label={h.navTools} icon={LayoutGrid} href="#features" />
-          <SideItem label={h.navProgress} icon={BarChart3} onClick={onOpenVault} />
+          <SideItem label={h.navProgress} icon={BarChart3} onClick={onOpenProgress} />
           <SideItem label={h.navVault} icon={ShieldCheck} onClick={onOpenVault} />
           <SideItem label={h.navCommunity} icon={Users} onClick={() => setSoonTitle(h.navCommunity)} />
           <SideItem label={h.navSettings} icon={Settings} onClick={onOpenSettings} />
@@ -77,81 +92,22 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCr
             />
           </section>
 
-          {/* Quick access for phones */}
-          <section className="md:hidden space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">{h.quickAccess}</h3>
-              <span className="text-xs text-indigo-300">{h.seeAll}</span>
-            </div>
-            <div className={`grid grid-cols-3 gap-2 rounded-2xl ${panel} p-3`}>
-              {features.slice(0, 3).map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => openFeature(f.key, f.title)}
-                  className="flex flex-col items-center gap-2 rounded-xl bg-[#11163a]/80 p-3 text-center text-xs font-semibold"
-                >
-                  <img src={`/icons/${f.img}.png`} alt="" className="w-12 h-12 object-contain" />
-                  {f.title}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Ideas banner for phones */}
-          <section className="md:hidden rounded-2xl border border-indigo-400/40 bg-gradient-to-r from-indigo-700/60 to-blue-700/40 p-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="font-bold">{h.ideasTitle}</p>
-              <p className="text-xs text-slate-200">{h.ideasSub}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onCreatePlan}
-              className="shrink-0 rounded-full bg-white/10 p-2"
-              aria-label={h.getStarted}
-            >
-              <Target className="w-5 h-5" />
-            </button>
-          </section>
-
-          {/* Feature grid */}
+          {/* Tools grid */}
           <section id="features" className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold">{h.explore}</h3>
-              <span className="text-xs text-indigo-300">{h.viewAll}</span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {features.map((f) => (
+            <h3 className="text-base font-bold">{h.explore}</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {tiles.map((tile) => (
                 <button
-                  key={f.key}
+                  key={tile.key}
                   type="button"
-                  onClick={() => openFeature(f.key, f.title)}
-                  className={`text-left rounded-2xl ${panel} p-4 hover:border-indigo-400 transition space-y-2`}
+                  onClick={() => openTile(tile)}
+                  className={`flex flex-col items-center gap-2 rounded-2xl ${panel} p-3 text-center text-xs font-semibold hover:border-indigo-400 transition`}
                 >
-                  <img src={`/icons/${f.img}.png`} alt="" className="w-16 h-16 object-contain" />
-                  <p className="font-bold text-sm">{f.title}</p>
-                  <p className="text-xs text-slate-400">{f.sub}</p>
+                  <img src={`/icons/${tile.img}.png`} alt="" className="w-12 h-12 sm:w-14 sm:h-14 object-contain" />
+                  <span className="leading-tight">{tile.title}</span>
                 </button>
               ))}
             </div>
-          </section>
-
-          {/* Execution Playbook banner */}
-          <section className={`flex items-center justify-between gap-4 rounded-2xl ${panel} p-5`}>
-            <div className="flex items-center gap-4 min-w-0">
-              <span className="shrink-0 rounded-xl p-3 text-indigo-300 bg-indigo-500/20"><Target className="w-6 h-6" /></span>
-              <div className="min-w-0">
-                <p className="font-bold">{h.playbook}</p>
-                <p className="text-xs text-slate-400">{h.playbookSub}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onCreatePlan}
-              className="shrink-0 rounded-xl border border-indigo-400/50 px-3 py-2 text-xs font-medium text-indigo-200 hover:bg-indigo-500/20"
-            >
-              {h.getStarted}
-            </button>
           </section>
         </div>
       </div>
@@ -159,7 +115,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCr
       {/* Bottom navigation for phones */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-end justify-around border-t border-indigo-500/25 bg-[#0b0f2a]/95 px-2 pt-2 pb-3">
         <BottomItem label={h.navHome} icon={Home} href="#top" />
-        <BottomItem label={h.navTools} icon={LayoutGrid} href="#features" />
+        <BottomItem label={h.navProgress} icon={BarChart3} onClick={onOpenProgress} />
         <button
           type="button"
           onClick={() => setSoonTitle(h.navAssistant)}
@@ -168,7 +124,7 @@ export default function HomeDashboard({ lang, onStartDecision, onOpenVault, onCr
         >
           <Sparkles className="w-5 h-5" />
         </button>
-        <BottomItem label={h.navProgress} icon={BarChart3} onClick={onOpenVault} />
+        <BottomItem label={h.navVault} icon={ShieldCheck} onClick={onOpenVault} />
         <BottomItem label={h.navSettings} icon={Settings} onClick={onOpenSettings} />
       </nav>
 

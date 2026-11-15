@@ -15,6 +15,9 @@ import ExportMenu from "./ExportMenu";
 import HomeDashboard from "./HomeDashboard";
 import ActionPlan from "./ActionPlan";
 import SettingsPanel from "./SettingsPanel";
+import VaultScreen from "./VaultScreen";
+import ProgressScreen from "./ProgressScreen";
+import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
@@ -196,7 +199,7 @@ export default function App() {
     : "bg-slate-50 border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan">("landing");
+  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress">("landing");
   const [planOption, setPlanOption] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
 
@@ -895,7 +898,8 @@ export default function App() {
               onStartDecision={handleStartNew}
               onCreatePlan={() => openActionPlan("")}
               onOpenSettings={() => setIsSettingsOpen(true)}
-              onOpenVault={() => setIsSidebarOpen(true)}
+              onOpenVault={() => setViewState("vault")}
+              onOpenProgress={() => setViewState("progress")}
             />
           )}
 
@@ -1321,6 +1325,57 @@ export default function App() {
               lang={lang}
               option={planOption}
               onBack={() => setViewState(planOption ? "results" : "landing")}
+            />
+          )}
+
+          {/* Decision Vault */}
+          {viewState === "vault" && (
+            <VaultScreen
+              items={savedMatrices}
+              signedIn={!!user}
+              labels={{
+                title: TOOL_STRINGS[lang].vault,
+                myDecisions: TOOL_STRINGS[lang].myDecisions,
+                lessons: TOOL_STRINGS[lang].lessons,
+                noLessons: TOOL_STRINGS[lang].noLessons,
+                signInToSee: t.signInToSee,
+                signIn: t.signIn,
+                noDecisions: t.noDecisions,
+                reviewed: t.reviewed,
+                pendingReview: t.pendingReview,
+                reviewLabel: t.reviewLabel,
+                outcomeLabel: t.outcomeLabel,
+                notSet: t.notSet,
+                back: t.back,
+              }}
+              onOpen={handleLoadSavedDecision}
+              onSignIn={() => openAuth("signin")}
+              onBack={() => setViewState("landing")}
+            />
+          )}
+
+          {/* My Progress */}
+          {viewState === "progress" && (
+            <ProgressScreen
+              summary={summary}
+              signedIn={!!user}
+              labels={{
+                title: TOOL_STRINGS[lang].myProgress,
+                signInToSee: t.signInToSee,
+                signIn: t.signIn,
+                back: t.back,
+                statTotal: t.statTotal,
+                statAwaiting: t.statAwaiting,
+                statCompleted: t.statCompleted,
+                nextReview: t.nextReview,
+                recentOutcomes: t.recentOutcomes,
+                goalsSoon: TOOL_STRINGS[lang].goalsSoon,
+                openVault: TOOL_STRINGS[lang].vault,
+                outcomeLabel: t.outcomeLabel,
+              }}
+              onSignIn={() => openAuth("signin")}
+              onBack={() => setViewState("landing")}
+              onOpenVault={() => setViewState("vault")}
             />
           )}
         </main>
