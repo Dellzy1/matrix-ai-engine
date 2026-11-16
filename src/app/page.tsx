@@ -206,6 +206,28 @@ export default function App() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress">("landing");
+
+  // The phone and browser Back buttons move between screens. Each screen change is recorded in history.
+  const viewFromHistory = useRef(false);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      viewFromHistory.current = true;
+      setViewState((e.state?.view as typeof viewState) ?? "landing");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    if (viewFromHistory.current) {
+      viewFromHistory.current = false;
+      return;
+    }
+    const recorded = window.history.state?.view;
+    if (recorded === viewState) return;
+    // The first screen replaces the starting entry, so Back doesn't need an extra press to leave.
+    if (recorded === undefined) window.history.replaceState({ view: viewState }, "");
+    else window.history.pushState({ view: viewState }, "");
+  }, [viewState]);
   const [planSeed, setPlanSeed] = useState<PlanSeed | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
