@@ -13,14 +13,18 @@ import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
 import HomeDashboard from "./HomeDashboard";
-import ActionPlan, { type PlanSeed } from "./ActionPlan";
+import dynamic from "next/dynamic";
+import type { PlanSeed } from "./ActionPlan";
 import SettingsPanel from "./SettingsPanel";
-import VaultScreen from "./VaultScreen";
-import ProgressScreen from "./ProgressScreen";
 import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
+
+// These screens are downloaded only when someone opens them, so the home page stays light on phones.
+const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
+const VaultScreen = dynamic(() => import("./VaultScreen"), { ssr: false, loading: () => null });
+const ProgressScreen = dynamic(() => import("./ProgressScreen"), { ssr: false, loading: () => null });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
