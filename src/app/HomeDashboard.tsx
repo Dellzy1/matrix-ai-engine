@@ -62,7 +62,7 @@ export default function HomeDashboard({
     <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100">
       <div className="flex">
         {/* Sidebar for tablet and computer */}
-        <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 ${panel} border-y-0 border-l-0`}>
+        <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 md:mr-10 ${panel} border-y-0 border-l-0`}>
           <SideItem label={h.navHome} icon={Home} active href="#top" />
           <SideItem label={h.navAssistant} icon={Sparkles} onClick={() => setSoonTitle(h.navAssistant)} />
           <SideItem label={h.navTools} icon={LayoutGrid} href="#features" />
