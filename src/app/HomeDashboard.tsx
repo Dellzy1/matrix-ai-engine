@@ -5,6 +5,7 @@ import { Home, LayoutGrid, BarChart3, ShieldCheck, Users, Settings, Sparkles, X 
 import type { Lang } from "@/lib/i18n";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { TOOL_STRINGS } from "@/lib/toolStrings";
+import { QUICK_TOOLS, TOOLS, type ToolDef, type ToolId } from "@/lib/tools";
 
 type Props = {
   lang: Lang;
@@ -15,17 +16,27 @@ type Props = {
   onOpenSettings: () => void;
 };
 
-type Tile = {
-  key: string;
-  title: string;
-  img: string;
-  action: "calc" | "plan" | "vault" | "soon";
+type HomeText = (typeof HOME_STRINGS)["en"];
+type ToolText = (typeof TOOL_STRINGS)["en"];
+type Tile = ToolDef & { title: string };
+
+// The name shown on each tile, taken from the home or tool strings.
+const titleOf: Record<ToolId, (h: HomeText, x: ToolText) => string> = {
+  assistant: (h) => h.featAssistant,
+  solver: (h) => h.featSolver,
+  calc: (h) => h.featCalc,
+  plan: (h) => h.playbook,
+  marketing: (_, x) => x.marketing,
+  opportunity: (_, x) => x.opportunity,
+  growth: (h) => h.featGrowth,
+  business: (h) => h.featBusiness,
+  creative: (h) => h.featCreative,
+  accountability: (_, x) => x.accountability,
+  journal: (_, x) => x.journal,
+  vault: (_, x) => x.vault,
 };
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
-
-// The most-used tools, shown first on phones.
-const QUICK_KEYS = ["calc", "plan", "vault"];
 
 export default function HomeDashboard({
   lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings,
@@ -37,21 +48,8 @@ export default function HomeDashboard({
   // On phones the full tools list stays hidden until "See all" is tapped.
   const [showAllTools, setShowAllTools] = useState(false);
 
-  // All tools, in the order of the mockup. Only calc, plan and vault open a working screen.
-  const tiles: Tile[] = [
-    { key: "assistant", title: h.featAssistant, img: "ai-assistant", action: "soon" },
-    { key: "solver", title: h.featSolver, img: "problem-solver", action: "soon" },
-    { key: "calc", title: h.featCalc, img: "decision-calculator", action: "calc" },
-    { key: "plan", title: h.playbook, img: "execution-playbook", action: "plan" },
-    { key: "marketing", title: x.marketing, img: "marketing-coach", action: "soon" },
-    { key: "opportunity", title: x.opportunity, img: "opportunity-finder", action: "soon" },
-    { key: "growth", title: h.featGrowth, img: "growth-centre", action: "soon" },
-    { key: "business", title: h.featBusiness, img: "business-builder", action: "soon" },
-    { key: "creative", title: h.featCreative, img: "creative-studio", action: "soon" },
-    { key: "accountability", title: x.accountability, img: "accountability-partner", action: "soon" },
-    { key: "journal", title: x.journal, img: "assumption-journal", action: "soon" },
-    { key: "vault", title: x.vault, img: "decision-vault", action: "vault" },
-  ];
+  // All tools come from the tool list, in home page order.
+  const tiles: Tile[] = TOOLS.map((tool) => ({ ...tool, title: titleOf[tool.id](h, x) }));
 
   const openTile = (tile: Tile) => {
     if (tile.action === "calc") return onStartDecision();
@@ -102,10 +100,10 @@ export default function HomeDashboard({
             <h3 className="text-sm font-bold">{h.quickAccess}</h3>
             <div className={`grid grid-cols-3 gap-2 rounded-2xl ${panel} p-3`}>
               {tiles
-                .filter((tile) => QUICK_KEYS.includes(tile.key))
+                .filter((tile) => QUICK_TOOLS.includes(tile.id))
                 .map((tile) => (
                   <button
-                    key={tile.key}
+                    key={tile.id}
                     type="button"
                     onClick={() => openTile(tile)}
                     className="flex flex-col items-center gap-2 rounded-xl bg-[#11163a]/80 p-3 text-center text-xs font-semibold"
@@ -132,7 +130,7 @@ export default function HomeDashboard({
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {tiles.map((tile) => (
                 <button
-                  key={tile.key}
+                  key={tile.id}
                   type="button"
                   onClick={() => openTile(tile)}
                   className={`flex flex-col items-center gap-2 rounded-2xl ${panel} p-3 text-center text-xs font-semibold hover:border-indigo-400 transition`}
