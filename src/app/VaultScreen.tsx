@@ -17,10 +17,14 @@ type Labels = {
   outcomeLabel: string;
   notSet: string;
   back: string;
+  planCompletedBadge: string;
+  lessonsLabel: string;
 };
 
 type Props = {
   items: any[];
+  // Completed and archived plans, shown in the lessons tab.
+  plans: any[];
   signedIn: boolean;
   labels: Labels;
   onOpen: (item: any) => void;
@@ -30,10 +34,10 @@ type Props = {
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
 
-export default function VaultScreen({ items, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
+export default function VaultScreen({ items, plans, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
   const [tab, setTab] = useState<"mine" | "lessons">("mine");
   const lessons = items.filter((i) => (i.actual_outcome ?? "").trim() !== "");
-  const shown = tab === "mine" ? items : lessons;
+  const isEmpty = tab === "mine" ? items.length === 0 : plans.length + lessons.length === 0;
 
   return (
     <div className="space-y-6 text-slate-100">
@@ -79,40 +83,69 @@ export default function VaultScreen({ items, signedIn, labels, onOpen, onSignIn,
             ))}
           </div>
 
-          {shown.length === 0 ? (
+          {isEmpty ? (
             <div className={`${panel} p-8 text-center`}>
               <p className="text-sm text-slate-400">{tab === "mine" ? labels.noDecisions : labels.noLessons}</p>
             </div>
           ) : (
-            <ul className="grid gap-3 md:grid-cols-2">
-              {shown.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpen(item)}
-                    className={`w-full text-left ${panel} p-4 space-y-2 hover:border-indigo-400 transition`}
-                  >
-                    <span
-                      className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                        item.actual_outcome ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"
-                      }`}
-                    >
-                      {item.actual_outcome ? labels.reviewed : labels.pendingReview}
-                    </span>
-                    <p className="font-bold break-words">{item.title}</p>
-                    {item.reason && <p className="text-xs text-slate-400 break-words">{item.reason}</p>}
-                    {item.actual_outcome && (
-                      <p className="text-xs text-slate-300 break-words">
-                        {labels.outcomeLabel} {item.actual_outcome}
-                      </p>
-                    )}
-                    <p className="flex items-center gap-1 text-[10px] text-slate-500">
-                      <Clock className="w-3 h-3" /> {labels.reviewLabel} {item.review_date || labels.notSet}
-                    </p>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              {/* Completed plans: what happened and what was learned */}
+              {tab === "lessons" && plans.length > 0 && (
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {plans.map((plan) => (
+                    <li key={plan.id} className={`${panel} p-4 space-y-2`}>
+                      <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                        {labels.planCompletedBadge}
+                      </span>
+                      <p className="font-bold break-words">{plan.title}</p>
+                      {plan.outcome && (
+                        <p className="text-xs text-slate-300 break-words whitespace-pre-wrap">
+                          {labels.outcomeLabel} {plan.outcome}
+                        </p>
+                      )}
+                      {plan.lessons && (
+                        <p className="text-xs text-slate-300 break-words whitespace-pre-wrap">
+                          {labels.lessonsLabel} {plan.lessons}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Saved decisions (mine), or decisions that have been reviewed (lessons) */}
+              {(tab === "mine" ? items : lessons).length > 0 && (
+                <ul className="grid gap-3 md:grid-cols-2">
+                  {(tab === "mine" ? items : lessons).map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => onOpen(item)}
+                        className={`w-full text-left ${panel} p-4 space-y-2 hover:border-indigo-400 transition`}
+                      >
+                        <span
+                          className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            item.actual_outcome ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"
+                          }`}
+                        >
+                          {item.actual_outcome ? labels.reviewed : labels.pendingReview}
+                        </span>
+                        <p className="font-bold break-words">{item.title}</p>
+                        {item.reason && <p className="text-xs text-slate-400 break-words">{item.reason}</p>}
+                        {item.actual_outcome && (
+                          <p className="text-xs text-slate-300 break-words">
+                            {labels.outcomeLabel} {item.actual_outcome}
+                          </p>
+                        )}
+                        <p className="flex items-center gap-1 text-[10px] text-slate-500">
+                          <Clock className="w-3 h-3" /> {labels.reviewLabel} {item.review_date || labels.notSet}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </>
       )}

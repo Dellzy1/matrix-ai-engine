@@ -19,6 +19,8 @@ export type Project = {
   due_date: string | null;
   status: ProjectStatus;
   outcome: string;
+  lessons: string;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -269,6 +271,32 @@ export async function duplicateTask(sb: SupabaseClient, task: Task, position: nu
   return { data: (data ?? null) as Task | null, error: msg(error) };
 }
 
+// ---- Completion (Round 3) ----
+
+// Marks a plan finished and records what happened and what was learned.
+export async function completeProject(
+  sb: SupabaseClient,
+  projectId: string,
+  outcome: string,
+  lessons: string,
+): Promise<Done> {
+  const now = new Date().toISOString();
+  const { error } = await sb
+    .from("projects")
+    .update({ status: "completed", outcome, lessons, completed_at: now, updated_at: now })
+    .eq("id", projectId);
+  return { error: msg(error) };
+}
+
+// Moves a finished plan out of the active list. It stays in the Vault.
+export async function archiveProject(sb: SupabaseClient, projectId: string): Promise<Done> {
+  const { error } = await sb
+    .from("projects")
+    .update({ status: "archived", updated_at: new Date().toISOString() })
+    .eq("id", projectId);
+  return { error: msg(error) };
+}
+
 // ---- Notes ----
 
 export async function addNote(sb: SupabaseClient, projectId: string, userId: string, content: string): Promise<WithData<Note>> {
@@ -304,7 +332,8 @@ export type ActivityType =
   | "task_deleted"
   | "deadline_changed"
   | "stage_added"
-  | "stage_deleted";
+  | "stage_deleted"
+  | "project_completed";
 
 export type Activity = {
   id: string;

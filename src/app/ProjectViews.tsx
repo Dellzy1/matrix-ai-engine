@@ -39,6 +39,7 @@ const ACTIVITY_KEY = {
   deadline_changed: "actDeadlineChanged",
   stage_added: "actStageAdded",
   stage_deleted: "actStageDeleted",
+  project_completed: "actProjectCompleted",
 } as const satisfies Record<ActivityType, string>;
 
 type ViewProps = {

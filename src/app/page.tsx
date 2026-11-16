@@ -20,6 +20,8 @@ import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
+import { PLAN_STRINGS } from "@/lib/planStrings";
+import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
@@ -322,6 +324,34 @@ export default function App() {
       recent: completed.slice(0, 3),
     };
   }, [savedMatrices, today]);
+
+  // Action plans and their tasks, loaded when the Vault or My Progress screen opens.
+  const [plans, setPlans] = useState<Project[]>([]);
+  const [planRows, setPlanRows] = useState<TaskRow[]>([]);
+  useEffect(() => {
+    if (!supabase || !user || (viewState !== "vault" && viewState !== "progress")) return;
+    listProjects(supabase, user.id).then((res) => {
+      setPlans(res.projects);
+      setPlanRows(res.taskRows);
+    });
+  }, [viewState, supabase, user]);
+  const planStats = useMemo(
+    () => ({
+      plansTotal: plans.length,
+      plansActive: plans.filter((p) => p.status === "active").length,
+      plansCompleted: plans.filter((p) => p.status === "completed" || p.status === "archived").length,
+      tasksDone: planRows.filter((r) => r.status === "completed").length,
+      tasksTotal: planRows.length,
+    }),
+    [plans, planRows],
+  );
+  const completedPlans = useMemo(
+    () =>
+      plans
+        .filter((p) => p.status === "completed" || p.status === "archived")
+        .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? "")),
+    [plans],
+  );
   const showError = (text: string) => {
     setNotice({ type: "error", text });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1361,7 +1391,10 @@ export default function App() {
                 outcomeLabel: t.outcomeLabel,
                 notSet: t.notSet,
                 back: t.back,
+                planCompletedBadge: PLAN_STRINGS[lang].planCompletedBadge,
+                lessonsLabel: PLAN_STRINGS[lang].lessonsLabel,
               }}
+              plans={completedPlans}
               onOpen={handleLoadSavedDecision}
               onSignIn={() => openAuth("signin")}
               onBack={() => setViewState("landing")}
@@ -1372,6 +1405,7 @@ export default function App() {
           {viewState === "progress" && (
             <ProgressScreen
               summary={summary}
+              planStats={planStats}
               signedIn={!!user}
               labels={{
                 title: TOOL_STRINGS[lang].myProgress,
@@ -1381,6 +1415,9 @@ export default function App() {
                 statTotal: t.statTotal,
                 statAwaiting: t.statAwaiting,
                 statCompleted: t.statCompleted,
+                statPlans: PLAN_STRINGS[lang].statPlans,
+                statActivePlans: PLAN_STRINGS[lang].statActivePlans,
+                statTasksDone: PLAN_STRINGS[lang].statTasksDone,
                 nextReview: t.nextReview,
                 recentOutcomes: t.recentOutcomes,
                 goalsSoon: TOOL_STRINGS[lang].goalsSoon,

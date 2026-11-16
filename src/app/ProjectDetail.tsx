@@ -9,6 +9,8 @@ import { dueState, todayKey } from "@/lib/planDates";
 import {
   addActivity,
   addNote,
+  archiveProject,
+  completeProject,
   addStage,
   addTask,
   calcProgress,
@@ -94,6 +96,9 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const [noteDraft, setNoteDraft] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteEditValue, setNoteEditValue] = useState("");
+  const [completing, setCompleting] = useState(false);
+  const [outcomeDraft, setOutcomeDraft] = useState("");
+  const [lessonsDraft, setLessonsDraft] = useState("");
 
   // Fetches everything. Used on first load, and to recover if a background save fails.
   const reload = useCallback(async () => {
@@ -196,6 +201,24 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const startPlan = () => {
     setProject({ ...project, status: "active" });
     save(() => updateProject(supabase, project.id, { status: "active" }));
+  };
+
+  // Completing a plan records what happened and what was learned. Open tasks don't block it.
+  const finishPlan = () => {
+    const outcome = outcomeDraft.trim();
+    const lessons = lessonsDraft.trim();
+    if (!outcome) return setError(t.completeOutcome);
+    setProject({ ...project, status: "completed", outcome, lessons, completed_at: new Date().toISOString() });
+    setCompleting(false);
+    log("project_completed", project.title);
+    save(() => completeProject(supabase, project.id, outcome, lessons));
+  };
+
+  // A finished plan leaves the active list but stays in the Decision Vault.
+  const archive = () => {
+    if (!window.confirm(t.confirmArchive)) return;
+    setProject({ ...project, status: "archived" });
+    save(() => archiveProject(supabase, project.id));
   };
 
   const removeProject = async () => {
@@ -460,6 +483,43 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
 
       {tab === "plan" && (
         <>
+          {/* Completion: the form while working, the result once finished */}
+          {project.status === "completed" || project.status === "archived" ? (
+            <section className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-5 space-y-3">
+              <p className="text-xs font-bold tracking-wider text-emerald-300">{t.completedBanner}</p>
+              {project.outcome && (
+                <p className="text-sm text-slate-100 whitespace-pre-wrap break-words">
+                  <span className="text-slate-400">{t.completeOutcome} </span>{project.outcome}
+                </p>
+              )}
+              {project.lessons && (
+                <p className="text-sm text-slate-100 whitespace-pre-wrap break-words">
+                  <span className="text-slate-400">{t.lessonsLabel} </span>{project.lessons}
+                </p>
+              )}
+              {project.status === "completed" && (
+                <button type="button" onClick={archive} className={ghostBtn}>{t.archivePlan}</button>
+              )}
+            </section>
+          ) : !completing ? (
+            <section className={`${panel} p-5 flex justify-end`}>
+              <button type="button" onClick={() => setCompleting(true)} className={primaryBtn}>{t.completeTitle}</button>
+            </section>
+          ) : (
+            <section className={`${panel} p-5 space-y-3`}>
+              <h3 className="font-bold">{t.completeTitle}</h3>
+              {progress.remaining > 0 && (
+                <p className="text-xs text-amber-200">{fmt(t.openTasksNote, { count: progress.remaining })}</p>
+              )}
+              <textarea className={field} rows={3} value={outcomeDraft} onChange={(e) => setOutcomeDraft(e.target.value)} placeholder={t.completeOutcome} aria-label={t.completeOutcome} maxLength={2000} />
+              <textarea className={field} rows={3} value={lessonsDraft} onChange={(e) => setLessonsDraft(e.target.value)} placeholder={t.completeLessons} aria-label={t.completeLessons} maxLength={2000} />
+              <div className="flex gap-2">
+                <button type="button" onClick={finishPlan} className={primaryBtn}>{t.completeButton}</button>
+                <button type="button" onClick={() => setCompleting(false)} className={ghostBtn}>{t.cancel}</button>
+              </div>
+            </section>
+          )}
+
           {/* Stages and tasks */}
           <section className="space-y-4">
             <h3 className="text-base font-bold">{t.stagesHeading}</h3>

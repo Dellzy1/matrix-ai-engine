@@ -11,6 +11,15 @@ type Summary = {
   recent: any[];
 };
 
+// Action plan numbers, taken from the plans and their tasks.
+type PlanStats = {
+  plansTotal: number;
+  plansActive: number;
+  plansCompleted: number;
+  tasksDone: number;
+  tasksTotal: number;
+};
+
 type Labels = {
   title: string;
   signInToSee: string;
@@ -24,10 +33,14 @@ type Labels = {
   goalsSoon: string;
   openVault: string;
   outcomeLabel: string;
+  statPlans: string;
+  statActivePlans: string;
+  statTasksDone: string;
 };
 
 type Props = {
   summary: Summary;
+  planStats: PlanStats;
   signedIn: boolean;
   labels: Labels;
   onSignIn: () => void;
@@ -37,8 +50,9 @@ type Props = {
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
 
-export default function ProgressScreen({ summary, signedIn, labels, onSignIn, onBack, onOpenVault }: Props) {
+export default function ProgressScreen({ summary, planStats, signedIn, labels, onSignIn, onBack, onOpenVault }: Props) {
   const percent = summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0;
+  const taskPercent = planStats.tasksTotal > 0 ? Math.round((planStats.tasksDone / planStats.tasksTotal) * 100) : 0;
 
   return (
     <div className="space-y-6 text-slate-100">
@@ -66,6 +80,36 @@ export default function ProgressScreen({ summary, signedIn, labels, onSignIn, on
         </div>
       ) : (
         <>
+          {/* Action plans */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: labels.statPlans, value: planStats.plansTotal },
+              { label: labels.statActivePlans, value: planStats.plansActive },
+              { label: labels.statCompleted, value: planStats.plansCompleted },
+            ].map((stat) => (
+              <div key={stat.label} className={`${panel} p-4 text-center`}>
+                <p className="text-2xl font-bold text-indigo-200">{stat.value}</p>
+                <p className="text-[11px] text-slate-400">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <section className={`${panel} p-5 space-y-2`}>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-semibold">{labels.statTasksDone}</span>
+              <span className="font-bold text-indigo-300">
+                {planStats.tasksDone} / {planStats.tasksTotal} ({taskPercent}%)
+              </span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-sky-400 to-violet-500 transition-all"
+                style={{ width: `${taskPercent}%` }}
+              />
+            </div>
+          </section>
+
+          {/* Decisions */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: labels.statTotal, value: summary.total },
