@@ -345,6 +345,21 @@ export default function App() {
     }),
     [plans, planRows],
   );
+  // The most recent plan linked to each saved decision, with its progress.
+  const decisionPlanProgress = useMemo(() => {
+    const map: Record<string, { title: string; percent: number; status: string }> = {};
+    for (const p of plans) {
+      if (!p.decision_id || map[p.decision_id]) continue;
+      const rows = planRows.filter((r) => r.project_id === p.id);
+      const done = rows.filter((r) => r.status === "completed").length;
+      map[p.decision_id] = {
+        title: p.title,
+        percent: rows.length > 0 ? Math.round((done / rows.length) * 100) : 0,
+        status: p.status,
+      };
+    }
+    return map;
+  }, [plans, planRows]);
   const completedPlans = useMemo(
     () =>
       plans
@@ -639,6 +654,18 @@ export default function App() {
     setNotice({ type: "success", text: t.decisionDeleted });
   };
 
+  // Saves the decision first if it isn't saved yet, then opens the plan linked to it.
+  const saveAndCreatePlan = async () => {
+    const id = activeDecisionId ?? (await handleSaveMatrix());
+    if (!id) return;
+    openActionPlan({
+      decisionId: id,
+      title: promptInput.trim() || t.decisionAnalysis,
+      selectedOption: ranked[0]?.name ?? "",
+      reason: reason.trim(),
+    });
+  };
+
   const handleSaveMatrix = async () => {
     if (!supabase || !user) {
       openAuth("signin");
@@ -685,6 +712,7 @@ export default function App() {
       });
       setNotice({ type: "success", text: activeDecisionId ? t.changesSaved : t.savedToVault });
       window.setTimeout(() => setNotice((n) => (n?.type === "success" ? null : n)), 3000);
+      return row.id as string;
     } catch (err: any) {
       const detail = [err?.message, err?.hint].filter(Boolean).join(" ");
       showError(`${t.saveFailed} ${detail || t.unknownError}`);
@@ -1184,6 +1212,15 @@ export default function App() {
                   {activeDecisionId && <p className="text-[11px] text-amber-400 print:hidden">{t.savedInVault}</p>}
                 </div>
                 <div className="print:hidden flex flex-wrap gap-2">
+                  {!activeDecisionId && (
+                    <button
+                      onClick={saveAndCreatePlan}
+                      disabled={saving}
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-medium px-3.5 py-2 rounded-xl shadow"
+                    >
+                      {PLAN_STRINGS[lang].saveAndPlan}
+                    </button>
+                  )}
                   <button
                     onClick={() =>
                       openActionPlan({
@@ -1393,8 +1430,10 @@ export default function App() {
                 back: t.back,
                 planCompletedBadge: PLAN_STRINGS[lang].planCompletedBadge,
                 lessonsLabel: PLAN_STRINGS[lang].lessonsLabel,
+                linkedPlan: PLAN_STRINGS[lang].linkedPlan,
               }}
               plans={completedPlans}
+              decisionPlans={decisionPlanProgress}
               onOpen={handleLoadSavedDecision}
               onSignIn={() => openAuth("signin")}
               onBack={() => setViewState("landing")}

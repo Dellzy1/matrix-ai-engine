@@ -151,6 +151,8 @@ const en = {
   statPlans: "Plans",
   statActivePlans: "Active plans",
   statTasksDone: "Tasks done",
+  saveAndPlan: "Save and create plan",
+  linkedPlan: "Plan:",
 };
 
 type PlanStrings = typeof en;
@@ -306,6 +308,8 @@ const fr: PlanStrings = {
   statPlans: "Plans",
   statActivePlans: "Plans actifs",
   statTasksDone: "Tâches terminées",
+  saveAndPlan: "Enregistrer et créer le plan",
+  linkedPlan: "Plan :",
 };
 
 const es: PlanStrings = {
@@ -459,6 +463,8 @@ const es: PlanStrings = {
   statPlans: "Planes",
   statActivePlans: "Planes activos",
   statTasksDone: "Tareas completadas",
+  saveAndPlan: "Guardar y crear plan",
+  linkedPlan: "Plan:",
 };
 
 const pt: PlanStrings = {
@@ -612,6 +618,8 @@ const pt: PlanStrings = {
   statPlans: "Planos",
   statActivePlans: "Planos ativos",
   statTasksDone: "Tarefas concluídas",
+  saveAndPlan: "Salvar e criar plano",
+  linkedPlan: "Plano:",
 };
 
 const sw: PlanStrings = {
@@ -765,6 +773,8 @@ const sw: PlanStrings = {
   statPlans: "Mipango",
   statActivePlans: "Mipango hai",
   statTasksDone: "Kazi zilizokamilika",
+  saveAndPlan: "Hifadhi na uunde mpango",
+  linkedPlan: "Mpango:",
 };
 
 const zh: PlanStrings = {
@@ -918,6 +928,8 @@ const zh: PlanStrings = {
   statPlans: "计划",
   statActivePlans: "进行中的计划",
   statTasksDone: "已完成的任务",
+  saveAndPlan: "保存并创建计划",
+  linkedPlan: "计划：",
 };
 
 export const PLAN_STRINGS: Record<Lang, PlanStrings> = { en, fr, es, pt, sw, zh };

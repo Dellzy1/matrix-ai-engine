@@ -19,12 +19,18 @@ type Labels = {
   back: string;
   planCompletedBadge: string;
   lessonsLabel: string;
+  linkedPlan: string;
 };
+
+// The plan linked to a saved decision, with its progress.
+type DecisionPlan = { title: string; percent: number; status: string };
 
 type Props = {
   items: any[];
   // Completed and archived plans, shown in the lessons tab.
   plans: any[];
+  // Keyed by decision ID.
+  decisionPlans: Record<string, DecisionPlan>;
   signedIn: boolean;
   labels: Labels;
   onOpen: (item: any) => void;
@@ -34,7 +40,7 @@ type Props = {
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
 
-export default function VaultScreen({ items, plans, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
+export default function VaultScreen({ items, plans, decisionPlans, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
   const [tab, setTab] = useState<"mine" | "lessons">("mine");
   const lessons = items.filter((i) => (i.actual_outcome ?? "").trim() !== "");
   const isEmpty = tab === "mine" ? items.length === 0 : plans.length + lessons.length === 0;
@@ -132,6 +138,11 @@ export default function VaultScreen({ items, plans, signedIn, labels, onOpen, on
                         </span>
                         <p className="font-bold break-words">{item.title}</p>
                         {item.reason && <p className="text-xs text-slate-400 break-words">{item.reason}</p>}
+                        {decisionPlans[item.id] && (
+                          <p className="text-xs text-indigo-200 break-words">
+                            {labels.linkedPlan} {decisionPlans[item.id].title} · {decisionPlans[item.id].percent}%
+                          </p>
+                        )}
                         {item.actual_outcome && (
                           <p className="text-xs text-slate-300 break-words">
                             {labels.outcomeLabel} {item.actual_outcome}
