@@ -9,6 +9,7 @@ import {
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
 } from "lucide-react";
 import { STRINGS, LANGUAGE_LABELS, fmt, type Lang } from "@/lib/i18n";
+import { InfoButton } from "./FeatureInfo";
 import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
@@ -974,11 +975,14 @@ export default function App() {
                 >
                   <ArrowLeft className="w-4 h-4" /> {t.back}
                 </button>
-                {activeDecisionId && (
-                  <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-medium">
-                    {t.editingSaved}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {activeDecisionId && (
+                    <span className="text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full font-medium">
+                      {t.editingSaved}
+                    </span>
+                  )}
+                  <InfoButton toolId="calc" lang={lang} />
+                </div>
               </div>
 
               <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 space-y-2">
@@ -1411,6 +1415,7 @@ export default function App() {
           {/* Decision Vault */}
           {viewState === "vault" && (
             <VaultScreen
+              lang={lang}
               items={savedMatrices}
               signedIn={!!user}
               labels={{

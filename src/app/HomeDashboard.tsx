@@ -8,6 +8,7 @@ import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { QUICK_TOOLS, TOOLS, type ToolDef, type ToolId } from "@/lib/tools";
 import DesktopHome from "./DesktopHome";
 import type { HomeMessage } from "@/lib/homeMessages";
+import { InfoSections } from "./FeatureInfo";
 
 type Props = {
   lang: Lang;
@@ -48,6 +49,12 @@ export default function HomeDashboard({
   const x = TOOL_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
+  // The tool behind the "Coming soon" box, so its information can be shown there.
+  const [soonTool, setSoonTool] = useState<ToolId | null>(null);
+  const showSoon = (title: string, tool: ToolId) => {
+    setSoonTitle(title);
+    setSoonTool(tool);
+  };
   // On phones the full tools list stays hidden until "See all" is tapped.
   const [showAllTools, setShowAllTools] = useState(false);
 
@@ -58,7 +65,7 @@ export default function HomeDashboard({
     if (tile.action === "calc") return onStartDecision();
     if (tile.action === "plan") return onCreatePlan();
     if (tile.action === "vault") return onOpenVault();
-    setSoonTitle(tile.title);
+    showSoon(tile.title, tile.id);
   };
 
   return (
@@ -69,11 +76,11 @@ export default function HomeDashboard({
         {/* Sidebar for tablet and computer */}
         <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 md:mr-10 ${panel} border-y-0 border-l-0`}>
           <SideItem label={h.navHome} icon={Home} active href="#top" />
-          <SideItem label={h.navAssistant} icon={Sparkles} onClick={() => setSoonTitle(h.navAssistant)} />
+          <SideItem label={h.navAssistant} icon={Sparkles} onClick={() => showSoon(h.navAssistant, "assistant")} />
           <SideItem label={h.navTools} icon={LayoutGrid} href="#features" />
           <SideItem label={h.navProgress} icon={BarChart3} onClick={onOpenProgress} />
           <SideItem label={h.navVault} icon={ShieldCheck} onClick={onOpenVault} />
-          <SideItem label={h.navCommunity} icon={Users} onClick={() => setSoonTitle(h.navCommunity)} />
+          <SideItem label={h.navCommunity} icon={Users} onClick={() => showSoon(h.navCommunity, "accountability")} />
           <SideItem label={h.navSettings} icon={Settings} onClick={onOpenSettings} />
         </aside>
 
@@ -87,7 +94,7 @@ export default function HomeDashboard({
               <p className="pt-1 text-sm font-semibold text-indigo-100">{message.main}</p>
               <button
                 type="button"
-                onClick={() => setSoonTitle(h.askButton)}
+                onClick={() => showSoon(h.askButton, "assistant")}
                 className="mt-1 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl shadow-lg transition"
               >
                 <Sparkles className="w-4 h-4" /> {h.askButton}
@@ -156,7 +163,7 @@ export default function HomeDashboard({
         <BottomItem label={h.navProgress} icon={BarChart3} onClick={onOpenProgress} />
         <button
           type="button"
-          onClick={() => setSoonTitle(h.navAssistant)}
+          onClick={() => showSoon(h.navAssistant, "assistant")}
           className="-mt-6 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 p-3.5 shadow-lg"
           aria-label={h.navAssistant}
         >
@@ -183,6 +190,7 @@ export default function HomeDashboard({
               {h.comingSoon}
             </span>
             <p className="text-sm text-slate-300">{h.comingSoonText}</p>
+          {soonTool && <InfoSections toolId={soonTool} lang={lang} />}
           </div>
         </div>
       )}

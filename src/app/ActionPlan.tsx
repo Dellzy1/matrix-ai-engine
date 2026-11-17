@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Lock, Plus, Search, Target } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
+import { InfoButton } from "./FeatureInfo";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { dueState, todayKey } from "@/lib/planDates";
 import {
@@ -203,7 +204,10 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
             <Target className="w-6 h-6" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xl sm:text-2xl font-bold">{t.title}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold">{t.title}</h2>
+              <InfoButton toolId="plan" lang={lang} />
+            </div>
             <p className="text-xs text-slate-400">{t.subtitle}</p>
           </div>
         </div>

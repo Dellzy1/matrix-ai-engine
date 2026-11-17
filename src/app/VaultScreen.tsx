@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { ArrowLeft, Clock, Lock } from "lucide-react";
+import type { Lang } from "@/lib/i18n";
+import { InfoButton } from "./FeatureInfo";
 
 type Labels = {
   title: string;
@@ -26,6 +28,7 @@ type Labels = {
 type DecisionPlan = { title: string; percent: number; status: string };
 
 type Props = {
+  lang: Lang;
   items: any[];
   // Completed and archived plans, shown in the lessons tab.
   plans: any[];
@@ -40,7 +43,7 @@ type Props = {
 
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
 
-export default function VaultScreen({ items, plans, decisionPlans, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
+export default function VaultScreen({ lang, items, plans, decisionPlans, signedIn, labels, onOpen, onSignIn, onBack }: Props) {
   const [tab, setTab] = useState<"mine" | "lessons">("mine");
   const lessons = items.filter((i) => (i.actual_outcome ?? "").trim() !== "");
   const isEmpty = tab === "mine" ? items.length === 0 : plans.length + lessons.length === 0;
@@ -55,7 +58,10 @@ export default function VaultScreen({ items, plans, decisionPlans, signedIn, lab
         <ArrowLeft className="w-4 h-4" /> {labels.back}
       </button>
 
-      <h2 className="text-2xl font-bold">{labels.title}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold">{labels.title}</h2>
+        <InfoButton toolId="vault" lang={lang} />
+      </div>
 
       {!signedIn ? (
         <div className={`${panel} p-6 text-center space-y-3`}>

@@ -9,6 +9,7 @@ import { HOME_STRINGS } from "@/lib/homeStrings";
 import { DESKTOP_STRINGS } from "@/lib/desktopStrings";
 import type { ToolDef, ToolId } from "@/lib/tools";
 import type { HomeMessage } from "@/lib/homeMessages";
+import { InfoSections } from "./FeatureInfo";
 
 // The computer home screen (large screens only). Phones and tablets use HomeDashboard.
 type Tile = ToolDef & { title: string };
@@ -34,12 +35,18 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
   const d = DESKTOP_STRINGS[lang];
   // Title of a tool that is not built yet, shown in the "Coming soon" box.
   const [soonTitle, setSoonTitle] = useState<string | null>(null);
+  // The tool behind the "Coming soon" box, so its information can be shown there.
+  const [soonTool, setSoonTool] = useState<ToolId | null>(null);
+  const showSoon = (title: string, tool: ToolId) => {
+    setSoonTitle(title);
+    setSoonTool(tool);
+  };
 
   const pick = (ids: ToolId[]) =>
     ids.map((id) => tiles.find((x) => x.id === id)).filter((x): x is Tile => !!x);
 
   const openTile = (tile: Tile) => {
-    if (tile.action === "soon") return setSoonTitle(tile.title);
+    if (tile.action === "soon") return showSoon(tile.title, tile.id);
     onOpenTile(tile);
   };
 
@@ -69,7 +76,7 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
 
   const nav = [
     { label: h.navHome, icon: Home, active: true, onClick: () => {} },
-    { label: h.navAssistant, icon: Sparkles, active: false, onClick: () => setSoonTitle(h.navAssistant) },
+    { label: h.navAssistant, icon: Sparkles, active: false, onClick: () => showSoon(h.navAssistant, "assistant") },
     {
       label: h.navTools,
       icon: LayoutGrid,
@@ -78,7 +85,7 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
     },
     { label: h.navProgress, icon: BarChart3, active: false, onClick: onOpenProgress },
     { label: h.navVault, icon: ShieldCheck, active: false, onClick: onOpenVault },
-    { label: h.navCommunity, icon: Users, active: false, onClick: () => setSoonTitle(h.navCommunity) },
+    { label: h.navCommunity, icon: Users, active: false, onClick: () => showSoon(h.navCommunity, "accountability") },
   ];
 
   // Each stage opens the tool that matches it. Market is not built yet, so it shows "Coming soon".
@@ -134,7 +141,7 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
           />
           <button
             type="button"
-            onClick={() => setSoonTitle(h.askButton)}
+            onClick={() => showSoon(h.askButton, "assistant")}
             className="flex items-center gap-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-medium text-white shadow-lg"
           >
             <Sparkles className="w-4 h-4" /> {h.askButton}
@@ -196,6 +203,7 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
               {h.comingSoon}
             </span>
             <p className="text-sm text-slate-300">{h.comingSoonText}</p>
+          {soonTool && <InfoSections toolId={soonTool} lang={lang} />}
           </div>
         </div>
       )}
