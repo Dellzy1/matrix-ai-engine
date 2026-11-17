@@ -753,8 +753,9 @@ export default function App() {
       {/* Header */}
       <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 max-w-full`}>
         <div className="flex items-center gap-3">
-          <a href="/" className="flex items-center">
-            <img src="/logo.png" alt={t.logoAlt} className="h-12 w-auto" />
+          <a href="/" className="flex items-center gap-2">
+            <img src="/logo-icon.png" alt={t.logoAlt} className="h-9 w-9 object-contain" />
+            <h1 className="font-bold text-xl text-slate-100">Decision Loop</h1>
           </a>
           <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
             {t.badgeProduction}
@@ -793,7 +794,7 @@ export default function App() {
               </button>
 
               {accountOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-700 shadow-xl py-1 z-50">
+                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-lg bg-slate-900 border border-slate-700 shadow-xl py-1 z-50">
                   <p className="px-3 py-2 text-[11px] text-slate-400 break-all border-b border-slate-800">
                     {user.email}
                   </p>

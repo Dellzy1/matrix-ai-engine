@@ -81,13 +81,18 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
     { label: h.navCommunity, icon: Users, active: false, onClick: () => setSoonTitle(h.navCommunity) },
   ];
 
+  // Each stage opens the tool that matches it. Market is not built yet, so it shows "Coming soon".
+  const openById = (id: ToolId) => {
+    const tile = tiles.find((x) => x.id === id);
+    if (tile) openTile(tile);
+  };
   const journey = [
-    { key: "decide", img: "journey-decide", label: d.decide },
-    { key: "plan", img: "journey-plan", label: d.plan },
-    { key: "execute", img: "journey-execute", label: d.execute },
-    { key: "market", img: "journey-market", label: d.market },
-    { key: "review", img: "journey-review", label: d.review },
-    { key: "achieve", img: "journey-achieve", label: d.achieve },
+    { key: "decide", img: "journey-decide", label: d.decide, go: () => openById("calc") },
+    { key: "plan", img: "journey-plan", label: d.plan, go: () => openById("plan") },
+    { key: "execute", img: "journey-execute", label: d.execute, go: () => openById("plan") },
+    { key: "market", img: "journey-market", label: d.market, go: () => openById("marketing") },
+    { key: "review", img: "journey-review", label: d.review, go: onOpenProgress },
+    { key: "achieve", img: "journey-achieve", label: d.achieve, go: onOpenVault },
   ];
 
   return (
@@ -153,10 +158,14 @@ export default function DesktopHome({ lang, tiles, onOpenTile, onOpenVault, onOp
             {journey.map((stage, index) => (
               <React.Fragment key={stage.key}>
                 {index > 0 && <ArrowRight className="w-4 h-4 text-indigo-400" />}
-                <div className="flex flex-col items-center gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={stage.go}
+                  className="flex flex-col items-center gap-1 text-xs hover:text-indigo-300"
+                >
                   <img src={`/icons/${stage.img}.png`} alt="" className="w-16 h-16 object-contain" />
                   <span>{stage.label}</span>
-                </div>
+                </button>
               </React.Fragment>
             ))}
           </div>

@@ -77,6 +77,23 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
 export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onBack }: Props) {
   const t = PLAN_STRINGS[lang];
   const [view, setView] = useState<View>(seed ? "new" : "list");
+  // A step inside the plan (a project or the new-plan form) is recorded in history,
+  // so the phone and browser Back buttons return to the plan list.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (e.state?.plan !== "detail") setView("list");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    if (view === "list" || window.history.state?.plan === "detail") return;
+    window.history.pushState({ ...window.history.state, plan: "detail" }, "");
+  }, [view]);
+  const goList = () => {
+    if (window.history.state?.plan === "detail") window.history.back();
+    else setView("list");
+  };
   const [projects, setProjects] = useState<Project[]>([]);
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +166,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
         supabase={supabase}
         userId={userId}
         projectId={view.projectId}
-        onBack={() => setView("list")}
+        onBack={goList}
       />
     );
   }
@@ -163,7 +180,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
         userId={userId}
         seed={seed}
         onSignIn={onSignIn}
-        onCancel={() => setView("list")}
+        onCancel={goList}
         onCreated={(id) => setView({ projectId: id })}
       />
     );
