@@ -21,6 +21,7 @@ import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
 import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { PLAN_STRINGS } from "@/lib/planStrings";
+import { buildHomeMessage } from "@/lib/homeMessages";
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
@@ -351,7 +352,7 @@ export default function App() {
   const [plans, setPlans] = useState<Project[]>([]);
   const [planRows, setPlanRows] = useState<TaskRow[]>([]);
   useEffect(() => {
-    if (!supabase || !user || (viewState !== "vault" && viewState !== "progress")) return;
+    if (!supabase || !user || !["landing", "vault", "progress"].includes(viewState)) return;
     listProjects(supabase, user.id).then((res) => {
       setPlans(res.projects);
       setPlanRows(res.taskRows);
@@ -382,6 +383,19 @@ export default function App() {
     }
     return map;
   }, [plans, planRows]);
+  // The home screen message follows the user's real progress.
+  const homeMessage = useMemo(
+    () =>
+      buildHomeMessage({
+        signedIn: !!user,
+        lang,
+        today,
+        decisionCount: savedMatrices.length,
+        plans,
+        taskRows: planRows,
+      }),
+    [user, lang, today, savedMatrices.length, plans, planRows],
+  );
   const completedPlans = useMemo(
     () =>
       plans
@@ -981,6 +995,7 @@ export default function App() {
               lang={lang}
               onStartDecision={handleStartNew}
               onCreatePlan={() => openActionPlan(null)}
+              message={homeMessage}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}
               onOpenProgress={() => setViewState("progress")}

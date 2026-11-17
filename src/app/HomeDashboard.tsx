@@ -6,6 +6,8 @@ import type { Lang } from "@/lib/i18n";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { QUICK_TOOLS, TOOLS, type ToolDef, type ToolId } from "@/lib/tools";
+import DesktopHome from "./DesktopHome";
+import type { HomeMessage } from "@/lib/homeMessages";
 
 type Props = {
   lang: Lang;
@@ -14,6 +16,7 @@ type Props = {
   onOpenProgress: () => void;
   onCreatePlan: () => void;
   onOpenSettings: () => void;
+  message: HomeMessage;
 };
 
 type HomeText = (typeof HOME_STRINGS)["en"];
@@ -39,7 +42,7 @@ const titleOf: Record<ToolId, (h: HomeText, x: ToolText) => string> = {
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
 export default function HomeDashboard({
-  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings,
+  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message,
 }: Props) {
   const h = HOME_STRINGS[lang];
   const x = TOOL_STRINGS[lang];
@@ -59,7 +62,9 @@ export default function HomeDashboard({
   };
 
   return (
-    <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100">
+    <>
+    {/* Phones and tablets: the layout below. Large screens show DesktopHome instead. */}
+    <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100 lg:hidden">
       <div className="flex">
         {/* Sidebar for tablet and computer */}
         <aside className={`hidden md:flex w-52 shrink-0 flex-col gap-1 p-4 mt-8 md:mr-10 ${panel} border-y-0 border-l-0`}>
@@ -79,6 +84,7 @@ export default function HomeDashboard({
               <p className="text-xs text-indigo-300">{h.tagline}</p>
               <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight">{h.headline}</h2>
               <p className="text-sm text-slate-300">{h.subline}</p>
+              <p className="pt-1 text-sm font-semibold text-indigo-100">{message.main}</p>
               <button
                 type="button"
                 onClick={() => setSoonTitle(h.askButton)}
@@ -181,6 +187,16 @@ export default function HomeDashboard({
         </div>
       )}
     </div>
+
+    <DesktopHome
+      lang={lang}
+      tiles={tiles}
+      onOpenTile={openTile}
+      onOpenVault={onOpenVault}
+      onOpenProgress={onOpenProgress}
+      message={message}
+    />
+    </>
   );
 }
 
