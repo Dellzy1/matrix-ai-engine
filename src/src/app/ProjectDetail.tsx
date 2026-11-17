@@ -9,6 +9,8 @@ import { dueState, todayKey } from "@/lib/planDates";
 import { nextStepFor, taskMatchesFocus, type NextAction } from "@/lib/nextStep";
 import { nextStepText } from "@/lib/nextStepStrings";
 import NextStepCard from "./NextStepCard";
+import ChallengePanel from "./ChallengePanel";
+import { challengesFor } from "@/lib/challenges";
 import {
   addActivity,
   addNote,
@@ -159,6 +161,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
   const progress = calcProgress(tasks);
   const today = todayKey();
   const nextStep = project ? nextStepFor(project, tasks, today) : null;
+  const challenges = project ? challengesFor(project, tasks, today) : [];
   const overdueCount = tasks.filter((x) => dueState(x.due_date, x.status, today) === "overdue").length;
 
   const nextPosition = (stageId: string | null) => {
@@ -469,6 +472,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
           secondaryLabel={nextStepText(lang, nextStep).showAll}
         />
       )}
+
+      {challenges.length > 0 && <ChallengePanel lang={lang} challenges={challenges} onFix={startEdit} />}
 
       {/* Overdue reminder, shown on every tab except Daily */}
       {overdueCount > 0 && tab !== "daily" && (
