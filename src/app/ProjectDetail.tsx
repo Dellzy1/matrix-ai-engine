@@ -473,7 +473,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
         />
       )}
 
-      {challenges.length > 0 && <ChallengePanel lang={lang} challenges={challenges} onFix={startEdit} />}
+      {challenges.length > 0 && <ChallengePanel lang={lang} challenges={challenges} onFix={() => { startEdit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
 
       {/* Overdue reminder, shown on every tab except Daily */}
       {overdueCount > 0 && tab !== "daily" && (
