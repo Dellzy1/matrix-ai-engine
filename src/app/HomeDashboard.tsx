@@ -8,6 +8,10 @@ import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { QUICK_TOOLS, TOOLS, type ToolDef, type ToolId } from "@/lib/tools";
 import DesktopHome from "./DesktopHome";
 import type { HomeMessage } from "@/lib/homeMessages";
+import type { NextStep } from "@/lib/nextStep";
+import { PLAN_ONLY_ACTIONS } from "@/lib/nextStep";
+import { nextStepText } from "@/lib/nextStepStrings";
+import NextStepCard from "./NextStepCard";
 import { InfoSections } from "./FeatureInfo";
 
 type Props = {
@@ -18,6 +22,8 @@ type Props = {
   onCreatePlan: () => void;
   onOpenSettings: () => void;
   message: HomeMessage;
+  nextStep?: NextStep | null;
+  onOpenNextStep?: (step: NextStep, focused: boolean) => void;
 };
 
 type HomeText = (typeof HOME_STRINGS)["en"];
@@ -43,7 +49,7 @@ const titleOf: Record<ToolId, (h: HomeText, x: ToolText) => string> = {
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
 export default function HomeDashboard({
-  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message,
+  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message, nextStep, onOpenNextStep,
 }: Props) {
   const h = HOME_STRINGS[lang];
   const x = TOOL_STRINGS[lang];
@@ -70,6 +76,18 @@ export default function HomeDashboard({
 
   return (
     <>
+    {nextStep && onOpenNextStep && (
+      <div className="mb-6">
+        <NextStepCard
+          lang={lang}
+          step={nextStep}
+          context="home"
+          onPrimary={() => onOpenNextStep(nextStep, !PLAN_ONLY_ACTIONS.includes(nextStep.action))}
+          onSecondary={PLAN_ONLY_ACTIONS.includes(nextStep.action) ? undefined : () => onOpenNextStep(nextStep, false)}
+          secondaryLabel={nextStepText(lang, nextStep).viewPlan}
+        />
+      </div>
+    )}
     {/* Phones and tablets: the layout below. Large screens show DesktopHome instead. */}
     <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100 lg:hidden">
       <div className="flex">

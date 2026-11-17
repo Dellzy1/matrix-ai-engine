@@ -6,6 +6,11 @@ import { ArrowLeft, ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-reac
 import { fmt, type Lang } from "@/lib/i18n";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { dueState, todayKey } from "@/lib/planDates";
+import { nextStepFor, taskMatchesFocus, type NextAction } from "@/lib/nextStep";
+import { nextStepText } from "@/lib/nextStepStrings";
+import NextStepCard from "./NextStepCard";
+import ChallengePanel from "./ChallengePanel";
+import { challengesFor } from "@/lib/challenges";
 import {
   addActivity,
   addNote,
@@ -43,6 +48,8 @@ type Props = {
   supabase: SupabaseClient | null;
   userId: string | null;
   projectId: string;
+  // The step chosen on the home screen. Null shows every task.
+  focus?: NextAction | null;
   onBack: () => void;
 };
 
@@ -75,7 +82,7 @@ const PRIORITY_STYLE: Record<Priority, string> = {
   urgent: "bg-rose-500/25 text-rose-200",
 };
 
-export default function ProjectDetail({ lang, supabase, userId, projectId, onBack }: Props) {
+export default function ProjectDetail({ lang, supabase, userId, projectId, focus, onBack }: Props) {
   const t = PLAN_STRINGS[lang];
   const [project, setProject] = useState<Project | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -85,6 +92,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("plan");
+  const [focusOn, setFocusOn] = useState<NextAction | null>(focus ?? null);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Project>>({});
@@ -152,6 +160,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
 
   const progress = calcProgress(tasks);
   const today = todayKey();
+  const nextStep = project ? nextStepFor(project, tasks, today) : null;
+  const challenges = project ? challengesFor(project, tasks, today) : [];
   const overdueCount = tasks.filter((x) => dueState(x.due_date, x.status, today) === "overdue").length;
 
   const nextPosition = (stageId: string | null) => {
@@ -443,6 +453,28 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
         )}
       </section>
 
+      {nextStep && (
+        <NextStepCard
+          lang={lang}
+          step={nextStep}
+          context="project"
+          onPrimary={() => {
+            if (nextStep.action === "complete") {
+              setTab("plan");
+              return setCompleting(true);
+            }
+            if (nextStep.action === "archive") return archive();
+            if (nextStep.action === "no_tasks") return setFocusOn(null);
+            setTab("plan");
+            setFocusOn(nextStep.action);
+          }}
+          onSecondary={focusOn ? () => setFocusOn(null) : undefined}
+          secondaryLabel={nextStepText(lang, nextStep).showAll}
+        />
+      )}
+
+      {challenges.length > 0 && <ChallengePanel lang={lang} challenges={challenges} onFix={startEdit} />}
+
       {/* Overdue reminder, shown on every tab except Daily */}
       {overdueCount > 0 && tab !== "daily" && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 text-xs text-rose-200">
@@ -525,7 +557,9 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, onBac
             <h3 className="text-base font-bold">{t.stagesHeading}</h3>
 
             {stages.map((stage, index) => {
-              const stageTasks = tasks.filter((x) => x.stage_id === stage.id).sort((a, b) => a.position - b.position);
+              const stageTasks = tasks
+                .filter((x) => x.stage_id === stage.id && (focusOn ? taskMatchesFocus(focusOn, x, today) : true))
+                .sort((a, b) => a.position - b.position);
               return (
                 <div key={stage.id} className={`${panel} p-4 space-y-3`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">

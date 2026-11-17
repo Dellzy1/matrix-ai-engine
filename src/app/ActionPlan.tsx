@@ -6,6 +6,7 @@ import { ArrowLeft, Lock, Plus, Search, Target } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
 import { InfoButton } from "./FeatureInfo";
 import { PLAN_STRINGS } from "@/lib/planStrings";
+import type { NextAction } from "@/lib/nextStep";
 import { dueState, todayKey } from "@/lib/planDates";
 import {
   CATEGORY_VALUES,
@@ -32,6 +33,8 @@ type Props = {
   supabase: SupabaseClient | null;
   userId: string | null;
   seed: PlanSeed | null;
+  // A project opened from the home card, and the step to focus on (null shows all tasks).
+  focus?: { projectId: string; action: NextAction | null } | null;
   onSignIn: () => void;
   onBack: () => void;
 };
@@ -75,9 +78,10 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-slate-600/30 text-slate-400",
 };
 
-export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onBack }: Props) {
+export default function ActionPlan({ lang, supabase, userId, seed, focus, onSignIn, onBack }: Props) {
   const t = PLAN_STRINGS[lang];
-  const [view, setView] = useState<View>(seed ? "new" : "list");
+  const [view, setView] = useState<View>(seed ? "new" : focus ? { projectId: focus.projectId } : "list");
+  const [focusState, setFocusState] = useState<{ projectId: string; action: NextAction | null } | null>(focus ?? null);
   // A step inside the plan (a project or the new-plan form) is recorded in history,
   // so the phone and browser Back buttons return to the plan list.
   useEffect(() => {
@@ -92,6 +96,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
     window.history.pushState({ ...window.history.state, plan: "detail" }, "");
   }, [view]);
   const goList = () => {
+    setFocusState(null);
     if (window.history.state?.plan === "detail") window.history.back();
     else setView("list");
   };
@@ -167,6 +172,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, onSignIn, onB
         supabase={supabase}
         userId={userId}
         projectId={view.projectId}
+        focus={focusState && focusState.projectId === view.projectId ? focusState.action : null}
         onBack={goList}
       />
     );

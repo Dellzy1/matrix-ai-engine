@@ -23,6 +23,7 @@ import { Settings as SettingsIcon } from "lucide-react";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { buildHomeMessage } from "@/lib/homeMessages";
+import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep";
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
@@ -231,6 +232,8 @@ export default function App() {
     else window.history.pushState({ view: viewState }, "");
   }, [viewState]);
   const [planSeed, setPlanSeed] = useState<PlanSeed | null>(null);
+  // A project opened from the home card, and the step to focus on.
+  const [planFocus, setPlanFocus] = useState<{ projectId: string; action: NextAction | null } | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -368,6 +371,11 @@ export default function App() {
         taskRows: planRows,
       }),
     [user, lang, today, savedMatrices.length, plans, planRows],
+  );
+  // The single most urgent next step across the user's projects.
+  const homeNextStep = useMemo(
+    () => (user ? nextStepForHome(plans, planRows, today) : null),
+    [user, plans, planRows, today],
   );
   const completedPlans = useMemo(
     () =>
@@ -534,6 +542,12 @@ export default function App() {
   // Opens the Create Action Plan screen, optionally with the chosen option.
   const openActionPlan = (seed: PlanSeed | null) => {
     setPlanSeed(seed);
+    setPlanFocus(null);
+    setViewState("plan");
+  };
+  const openNextStep = (step: NextStep, focused: boolean) => {
+    setPlanSeed(null);
+    setPlanFocus({ projectId: step.projectId, action: focused ? step.action : null });
     setViewState("plan");
   };
 
@@ -959,6 +973,8 @@ export default function App() {
               onStartDecision={handleStartNew}
               onCreatePlan={() => openActionPlan(null)}
               message={homeMessage}
+              nextStep={homeNextStep}
+              onOpenNextStep={openNextStep}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}
               onOpenProgress={() => setViewState("progress")}
@@ -1407,6 +1423,7 @@ export default function App() {
               supabase={supabase}
               userId={user?.id ?? null}
               seed={planSeed}
+              focus={planFocus}
               onSignIn={() => openAuth("signin")}
               onBack={() => setViewState(planSeed ? "results" : "landing")}
             />
