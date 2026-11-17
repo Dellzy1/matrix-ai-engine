@@ -253,34 +253,6 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
-  const [workspaceBranding, setWorkspaceBranding] = useState({
-    company_name: "Decision Loop",
-    logo_url: "",
-  });
-
-  useEffect(() => {
-    async function fetchBranding() {
-      if (!supabase) return;
-      try {
-        const { data } = await supabase
-          .from("matrices")
-          .select("company_name, logo_url")
-          .limit(1)
-          .maybeSingle();
-
-        if (data && (data.company_name || data.logo_url)) {
-          setWorkspaceBranding({
-            company_name: data.company_name || "Decision Loop",
-            logo_url: data.logo_url || "",
-          });
-        }
-      } catch (err) {
-        console.log("Using default branding");
-      }
-    }
-    fetchBranding();
-  }, []);
-
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSuccessMsg, setAuthSuccessMsg] = useState("");
@@ -781,19 +753,8 @@ export default function App() {
       {/* Header */}
       <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 max-w-full`}>
         <div className="flex items-center gap-3">
-          <a href="/settings/branding" className="flex items-center gap-3 group">
-            {workspaceBranding.logo_url ? (
-              <img
-                src={workspaceBranding.logo_url}
-                alt={t.logoAlt}
-                className="w-8 h-8 object-contain rounded-lg border border-slate-700 bg-slate-900 p-0.5 group-hover:border-indigo-500 transition-colors"
-              />
-            ) : (
-              <Sparkles className="w-6 h-6 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-            )}
-            <h1 className="font-bold text-xl cursor-pointer text-slate-100 group-hover:text-indigo-400 transition-colors">
-              {workspaceBranding.company_name}
-            </h1>
+          <a href="/" className="flex items-center">
+            <img src="/logo.png" alt={t.logoAlt} className="h-12 w-auto" />
           </a>
           <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
             {t.badgeProduction}
