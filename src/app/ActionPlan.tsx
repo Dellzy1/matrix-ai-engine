@@ -408,6 +408,7 @@ function NewProjectForm({
         expected_result: expected.trim(),
         success_measure: measure.trim(),
         selected_option: seed?.selectedOption || null,
+        recommended_option: seed?.selectedOption || "",
         decision_id: seed?.decisionId || null,
         category,
         start_date: startDate || null,

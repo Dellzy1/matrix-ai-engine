@@ -18,6 +18,7 @@ export type Project = {
   start_date: string | null;
   due_date: string | null;
   status: ProjectStatus;
+  recommended_option: string;
   outcome: string;
   lessons: string;
   completed_at: string | null;
@@ -66,6 +67,8 @@ export type ProjectInput = {
   expected_result: string;
   success_measure: string;
   selected_option: string | null;
+  // The calculator's top choice when the plan was created. The user does not change it.
+  recommended_option?: string;
   decision_id: string | null;
   category: string;
   start_date: string | null;

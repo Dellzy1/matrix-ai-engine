@@ -185,6 +185,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       category: project.category,
       start_date: project.start_date,
       due_date: project.due_date,
+      selected_option: project.selected_option,
     });
     setEditing(true);
   };
@@ -201,6 +202,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       category: draft.category ?? "Other",
       start_date: draft.start_date || null,
       due_date: draft.due_date || null,
+      selected_option: draft.selected_option?.trim() || null,
     };
     setProject({ ...project, ...patch });
     setEditing(false);
@@ -409,6 +411,9 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
               {project.expected_result && <p><span className="text-slate-400">{t.fieldExpected} </span>{project.expected_result}</p>}
               {project.success_measure && <p><span className="text-slate-400">{t.fieldMeasure} </span>{project.success_measure}</p>}
               {project.selected_option && <p>{project.selected_option}</p>}
+              {project.recommended_option && project.selected_option !== project.recommended_option && (
+                <p className="text-xs text-slate-400">{fmt(t.recommendedNote, { option: project.recommended_option })}</p>
+              )}
               <p><span className="text-slate-400">{t.startDate}: </span>{project.start_date || t.noDeadline}</p>
               <p><span className="text-slate-400">{t.deadlineDate}: </span>{project.due_date || t.noDeadline}</p>
             </div>
@@ -441,6 +446,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
             <input className={field} value={draft.goal ?? ""} onChange={(e) => setDraft({ ...draft, goal: e.target.value })} placeholder={t.fieldGoal} />
             <input className={field} value={draft.expected_result ?? ""} onChange={(e) => setDraft({ ...draft, expected_result: e.target.value })} placeholder={t.fieldExpected} />
             <input className={field} value={draft.success_measure ?? ""} onChange={(e) => setDraft({ ...draft, success_measure: e.target.value })} placeholder={t.fieldMeasure} />
+            <input className={field} value={draft.selected_option ?? ""} onChange={(e) => setDraft({ ...draft, selected_option: e.target.value })} placeholder={t.fieldChosen} maxLength={200} />
             <div className="grid gap-3 sm:grid-cols-2">
               <input type="date" className={field} value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} aria-label={t.fieldStart} />
               <input type="date" className={field} value={draft.due_date ?? ""} onChange={(e) => setDraft({ ...draft, due_date: e.target.value })} aria-label={t.fieldDue} />
