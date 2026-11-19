@@ -88,6 +88,36 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
   const t = PLAN_STRINGS[lang];
   const [showReport, setShowReport] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
+  // The options of the saved decision this plan came from, shown as one-tap choices.
+  const [decisionOptions, setDecisionOptions] = useState<string[]>([]);
+  const decisionId = project?.decision_id ?? null;
+  useEffect(() => {
+    if (!decisionId || !supabase) {
+      setDecisionOptions([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("matrices")
+      .select("options")
+      .eq("id", decisionId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.options) ? (data.options as { name?: string }[]) : [];
+        setDecisionOptions(list.map((o) => (o.name ?? "").trim()).filter(Boolean));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, decisionId]);
+
+  // Saves the chosen option straight away, with no Edit step.
+  const chooseOption = (name: string) => {
+    if (!project || !supabase) return;
+    setProject({ ...project, selected_option: name });
+    save(() => updateProject(supabase, project.id, { selected_option: name }));
+  };
   const [stages, setStages] = useState<Stage[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -432,6 +462,27 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
               {project.success_measure && <p><span className="text-slate-400">{t.fieldMeasure} </span>{project.success_measure}</p>}
               {project.budget && <p><span className="text-slate-400">{t.fieldBudget} </span>{project.budget}</p>}
               {project.resources && <p><span className="text-slate-400">{t.fieldResources} </span>{project.resources}</p>}
+              {decisionOptions.length > 0 && (
+                <div className="col-span-full space-y-2">
+                  <p className="text-xs text-slate-400">{t.pickOption}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {decisionOptions.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => chooseOption(name)}
+                        className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                          project.selected_option === name
+                            ? "border-indigo-400 bg-indigo-600 text-white"
+                            : "border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/20"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {project.selected_option && <p>{project.selected_option}</p>}
               {project.recommended_option && project.selected_option !== project.recommended_option && (
                 <p className="text-xs text-slate-400">{fmt(t.recommendedNote, { option: project.recommended_option })}</p>
