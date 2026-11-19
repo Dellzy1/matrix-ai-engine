@@ -24,7 +24,7 @@ export type ReportInput = {
   challenges: Challenge[];
 };
 
-export type SummaryKey = "goal" | "expected" | "measure" | "start" | "deadline";
+export type SummaryKey = "description" | "goal" | "expected" | "measure" | "start" | "deadline";
 
 export type ReportSection =
   | { kind: "summary"; rows: { label: SummaryKey; value: string | null }[] }
@@ -60,6 +60,7 @@ export function buildReport({ project, stages, tasks, decision, challenges }: Re
   const sections: ReportSection[] = [];
 
   const summaryRows = [
+    { label: "description" as const, value: project.description || null },
     { label: "goal" as const, value: project.goal || null },
     { label: "expected" as const, value: project.expected_result || null },
     { label: "measure" as const, value: project.success_measure || null },

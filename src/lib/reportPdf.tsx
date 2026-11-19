@@ -101,7 +101,7 @@ function SectionView({ section, s, lang }: { section: ReportSection; s: ReportSt
         <Block heading={s.sections.analysis}>
           {section.criteria.map((c, i) => (
             <Text key={i} style={styles.line}>
-              {`${c.name} — ${s.labels.weight} ${c.weight}${c.inverted ? ` (${s.labels.inverted})` : ""}`}
+              {`${c.name} — ${s.labels.weight} ${c.weight} · ${c.inverted ? s.labels.lowerBetter : s.labels.higherBetter}`}
             </Text>
           ))}
           <Text style={[styles.groupTitle]}>{s.labels.ranking}</Text>

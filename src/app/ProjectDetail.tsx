@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowDown, ArrowUp, Copy, FileText, Pencil, Trash2 } from "l
 import { fmt, type Lang } from "@/lib/i18n";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { dueState, todayKey } from "@/lib/planDates";
+import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
 import { nextStepFor, taskMatchesFocus, type NextAction } from "@/lib/nextStep";
 import { nextStepText } from "@/lib/nextStepStrings";
 import NextStepCard from "./NextStepCard";
@@ -228,6 +229,17 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
   const saveProjectEdits = () => {
     if (!draft.title?.trim()) return setError(t.needTitle);
     if (draft.start_date && draft.due_date && draft.due_date < draft.start_date) return setError(t.dateOrder);
+    const unfinished = findPlaceholders(
+      collectStrings({
+        description: draft.description,
+        goal: draft.goal,
+        expected_result: draft.expected_result,
+        success_measure: draft.success_measure,
+        budget: draft.budget,
+        resources: draft.resources,
+      }),
+    );
+    if (unfinished.length) return setError(placeholderMessage(lang, unfinished));
     const patch = {
       title: draft.title.trim(),
       description: draft.description ?? "",

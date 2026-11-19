@@ -19,6 +19,7 @@ import {
   type TaskStatus,
 } from "@/lib/projects";
 import ProjectDetail from "./ProjectDetail";
+import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
 
 // What Decision Loop passes in from the Calculator, after the user chooses Create Action Plan.
 export type PlanSeed = {
@@ -393,6 +394,11 @@ function NewProjectForm({
     }
     if (startDate && dueDate && dueDate < startDate) {
       setFormError(t.dateOrder);
+      return;
+    }
+    const unfinished = findPlaceholders(collectStrings({ title, description, goal, expected, measure }));
+    if (unfinished.length) {
+      setFormError(placeholderMessage(lang, unfinished));
       return;
     }
     setSaving(true);

@@ -7,6 +7,7 @@ import type { Lang } from "@/lib/i18n";
 import type { CalculatorReportData } from "@/lib/calculatorReport";
 import { CALC_REPORT_STRINGS } from "@/lib/calculatorReportStrings";
 import { todayKey } from "@/lib/planDates";
+import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
 
 type Props = { lang: Lang; report: CalculatorReportData };
 
@@ -29,6 +30,11 @@ export default function CalculatorPDFDownload({ lang, report }: Props) {
 
   const download = async () => {
     if (inFlight.current) return; // one document at a time
+    const unfinished = findPlaceholders(collectStrings([report.title, report.reason]));
+    if (unfinished.length) {
+      setError(placeholderMessage(lang, unfinished));
+      return;
+    }
     inFlight.current = true;
     setBusy(true);
     setError(null);

@@ -20,6 +20,9 @@ export type ReportStrings = {
   labels: {
     budget: string;
     resources: string;
+    lowerBetter: string;
+    higherBetter: string;
+    description: string;
     goal: string;
     expected: string;
     measure: string;
@@ -62,6 +65,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "Budget", resources: "Resources",
+      lowerBetter: "Lower is better", higherBetter: "Higher is better", description: "Description",
       goal: "Goal", expected: "Expected result", measure: "Success measure",
       start: "Start", deadline: "Deadline", question: "Question", reason: "Reason",
       options: "Options", criteria: "Criteria", weight: "Weight", inverted: "Reversed",
@@ -83,6 +87,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "Budget", resources: "Ressources",
+      lowerBetter: "Plus bas est mieux", higherBetter: "Plus haut est mieux", description: "Description",
       goal: "Objectif", expected: "Résultat attendu", measure: "Mesure de réussite",
       start: "Début", deadline: "Échéance", question: "Question", reason: "Raison",
       options: "Options", criteria: "Critères", weight: "Poids", inverted: "Inversé",
@@ -104,6 +109,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "Presupuesto", resources: "Recursos",
+      lowerBetter: "Cuanto más bajo, mejor", higherBetter: "Cuanto más alto, mejor", description: "Descripción",
       goal: "Objetivo", expected: "Resultado esperado", measure: "Medida de éxito",
       start: "Inicio", deadline: "Fecha límite", question: "Pregunta", reason: "Razón",
       options: "Opciones", criteria: "Criterios", weight: "Peso", inverted: "Invertido",
@@ -125,6 +131,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "Orçamento", resources: "Recursos",
+      lowerBetter: "Quanto menor, melhor", higherBetter: "Quanto maior, melhor", description: "Descrição",
       goal: "Objetivo", expected: "Resultado esperado", measure: "Medida de sucesso",
       start: "Início", deadline: "Prazo", question: "Pergunta", reason: "Motivo",
       options: "Opções", criteria: "Critérios", weight: "Peso", inverted: "Invertido",
@@ -146,6 +153,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "Bajeti", resources: "Rasilimali",
+      lowerBetter: "Ndogo ni bora", higherBetter: "Kubwa ni bora", description: "Maelezo",
       goal: "Lengo", expected: "Matokeo yanayotarajiwa", measure: "Kipimo cha mafanikio",
       start: "Kuanza", deadline: "Tarehe ya mwisho", question: "Swali", reason: "Sababu",
       options: "Chaguo", criteria: "Vigezo", weight: "Uzito", inverted: "Imegeuzwa",
@@ -167,6 +175,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
     },
     labels: {
       budget: "预算", resources: "资源",
+      lowerBetter: "数值越低越好", higherBetter: "数值越高越好", description: "描述",
       goal: "目标", expected: "预期结果", measure: "成功衡量标准",
       start: "开始日期", deadline: "截止日期", question: "问题", reason: "理由",
       options: "选项", criteria: "标准", weight: "权重", inverted: "反向计分",

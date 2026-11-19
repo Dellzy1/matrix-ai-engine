@@ -20,6 +20,7 @@ import {
 import { REPORT_CHOOSER, REPORT_STRINGS, REPORT_UI, fill } from "@/lib/reportStrings";
 import { challengeText } from "@/lib/challengeStrings";
 import { todayKey } from "@/lib/planDates";
+import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
 
 type Props = {
   lang: Lang;
@@ -79,6 +80,9 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
     () => (full ? shapeReport(full, { scope, audience, version, excluded }) : null),
     [full, scope, audience, version, excluded],
   );
+
+  // Unfinished template text such as [date] must be fixed before the report can be downloaded.
+  const unfinished = useMemo(() => (shaped ? findPlaceholders(collectStrings(shaped)) : []), [shaped]);
 
   const kindLabel = scope === "decision" ? ch.typeDecision : scope === "action" ? ch.typeAction : s.kind;
 
@@ -205,10 +209,11 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
             <p className="text-xs text-slate-400">{ui.note}</p>
             {!linked && <p className="text-xs text-amber-300">{ui.noDecision}</p>}
 
+            {unfinished.length > 0 && <p className="text-sm text-amber-300">{placeholderMessage(lang, unfinished)}</p>}
             <button
               type="button"
               onClick={download}
-              disabled={busy}
+              disabled={busy || unfinished.length > 0}
               className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
             >
               <Download className="w-4 h-4" /> {ui.download}
@@ -273,7 +278,7 @@ function SectionPreview({
           {heading(s.sections.analysis)}
           {section.criteria.map((c, i) => (
             <p key={i} className="text-sm">
-              {`${c.name} — ${s.labels.weight} ${c.weight}${c.inverted ? ` (${s.labels.inverted})` : ""}`}
+              {`${c.name} — ${s.labels.weight} ${c.weight} · ${c.inverted ? s.labels.lowerBetter : s.labels.higherBetter}`}
             </p>
           ))}
           <p className="pt-1 text-xs font-semibold text-slate-400">{s.labels.ranking}</p>
