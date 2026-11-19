@@ -11,6 +11,16 @@ import { todayKey } from "@/lib/planDates";
 type Props = { lang: Lang; report: CalculatorReportData };
 
 // Builds the PDF in the browser only when pressed. It reads the results it is given and changes nothing.
+// A build that takes longer than this is treated as a failure, so the spinner can never run forever.
+const PDF_TIMEOUT_MS = 30000;
+
+function withTimeout<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("PDF generation timed out")), PDF_TIMEOUT_MS);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
 export default function CalculatorPDFDownload({ lang, report }: Props) {
   const c = CALC_REPORT_STRINGS[lang];
   const [busy, setBusy] = useState(false);
@@ -30,7 +40,7 @@ export default function CalculatorPDFDownload({ lang, report }: Props) {
       // The date is read now, at the moment of download.
       const dated = { ...report, generatedAt: todayKey() };
       const doc = <CalculatorReportDocument report={dated} lang={lang} />;
-      const blob = await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
+      const blob = await withTimeout(pdf(doc as React.ReactElement<DocumentProps>).toBlob());
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -39,7 +49,8 @@ export default function CalculatorPDFDownload({ lang, report }: Props) {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
+    } catch (err) {
+      console.error("Calculator PDF failed:", err);
       setError(c.error);
     } finally {
       inFlight.current = false;
