@@ -1,14 +1,35 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 import type { Lang } from "./i18n";
 import { challengeText } from "./challengeStrings";
 import type { ReportModel, ReportSection } from "./reportData";
 import { REPORT_STRINGS, fill, type ReportStrings } from "./reportStrings";
 
 // The PDF layout. It only lays out the data it is given; it never adds facts of its own.
-const styles = StyleSheet.create({
-  page: { paddingTop: 40, paddingBottom: 56, paddingHorizontal: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1e293b", lineHeight: 1.4 },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 4 },
+// Chinese text needs a font with Chinese glyphs. It is registered only when a Chinese report is made.
+const CJK_FAMILY = "NotoSansSC";
+let cjkRegistered = false;
+
+export function registerChineseFont(basePath = "/fonts") {
+  if (cjkRegistered) return;
+  Font.register({
+    family: CJK_FAMILY,
+    fonts: [
+      { src: `${basePath}/NotoSansSC-Regular.ttf`, fontWeight: 400 },
+      { src: `${basePath}/NotoSansSC-Bold.ttf`, fontWeight: 700 },
+    ],
+  });
+  cjkRegistered = true;
+}
+
+export function fontFamilyFor(lang: Lang): string {
+  return lang === "zh" ? CJK_FAMILY : "Helvetica";
+}
+
+function makeStyles(fontFamily: string) {
+  return StyleSheet.create({
+  page: { paddingTop: 40, paddingBottom: 56, paddingHorizontal: 40, fontSize: 10, fontFamily, color: "#1e293b", lineHeight: 1.4 },
+  title: { fontSize: 20, fontWeight: "bold", lineHeight: 1.3, marginBottom: 8 },
   kind: { fontSize: 10, color: "#64748b", marginBottom: 14 },
   section: { marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#e2e8f0" },
   heading: { fontSize: 13, fontWeight: "bold", color: "#4338ca", marginBottom: 6 },
@@ -22,13 +43,20 @@ const styles = StyleSheet.create({
   taskMeta: { width: 150, color: "#64748b", textAlign: "right" },
   groupTitle: { fontWeight: "bold", marginTop: 6, marginBottom: 3 },
   footer: { position: "absolute", bottom: 24, left: 40, right: 40, fontSize: 8, color: "#94a3b8", textAlign: "center" },
-});
+  });
+}
+
+// The styles for the current report's font. Set by ReportDocument.
+type Styles = ReturnType<typeof makeStyles>;
+const StylesContext = React.createContext<Styles>(makeStyles("Helvetica"));
+const useStyles = () => React.useContext(StylesContext);
 
 function fillDate(template: string, date: string) {
   return fill(template, { date });
 }
 
 function Block({ heading, children }: { heading: string; children: React.ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <Text style={styles.heading}>{heading}</Text>
@@ -38,6 +66,7 @@ function Block({ heading, children }: { heading: string; children: React.ReactNo
 }
 
 function Row({ label, value }: { label: string; value: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
@@ -47,6 +76,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function SectionView({ section, s, lang }: { section: ReportSection; s: ReportStrings; lang: Lang }) {
+  const styles = useStyles();
   switch (section.kind) {
     case "summary":
       return (
@@ -132,20 +162,25 @@ function SectionView({ section, s, lang }: { section: ReportSection; s: ReportSt
 
 export function ReportDocument({ report, lang, createdOn }: { report: ReportModel; lang: Lang; createdOn: string }) {
   const s = REPORT_STRINGS[lang];
+  const family = fontFamilyFor(lang);
+  if (family === CJK_FAMILY) registerChineseFont();
+  const styles = makeStyles(family);
   return (
-    <Document title={report.title} author="Decision Loop" subject={s.kind}>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>{report.title}</Text>
-        <Text style={styles.kind}>{`${s.kind} · ${fillDate(s.created, createdOn)}`}</Text>
-        {report.sections.map((section, i) => (
-          <SectionView key={`${section.kind}-${i}`} section={section} s={s} lang={lang} />
-        ))}
-        <Text
-          style={styles.footer}
-          fixed
-          render={({ pageNumber, totalPages }) => fill(s.pageOf, { page: pageNumber, total: totalPages })}
-        />
-      </Page>
-    </Document>
+    <StylesContext.Provider value={styles}>
+      <Document title={report.title} author="Decision Loop" subject={s.kind}>
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.title}>{report.title}</Text>
+          <Text style={styles.kind}>{`${s.kind} · ${fillDate(s.created, createdOn)}`}</Text>
+          {report.sections.map((section, i) => (
+            <SectionView key={`${section.kind}-${i}`} section={section} s={s} lang={lang} />
+          ))}
+          <Text
+            style={styles.footer}
+            fixed
+            render={({ pageNumber, totalPages }) => fill(s.pageOf, { page: pageNumber, total: totalPages })}
+          />
+        </Page>
+      </Document>
+    </StylesContext.Provider>
   );
 }
