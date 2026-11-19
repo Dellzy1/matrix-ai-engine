@@ -30,6 +30,7 @@ export type ReportSection =
   | { kind: "analysis"; criteria: { name: string; weight: number; inverted: boolean }[]; ranking: { name: string; score: number }[] }
   | { kind: "choice"; chosen: string | null; recommended: string | null }
   | { kind: "stages"; done: number; total: number; groups: { title: string | null; tasks: { title: string; status: TaskStatus; due: string | null }[] }[] }
+  | { kind: "budget"; budget: string | null; resources: string | null }
   | { kind: "risks"; items: Challenge[] }
   | { kind: "outcome"; outcome: string | null; lessons: string | null };
 
@@ -104,6 +105,10 @@ export function buildReport({ project, stages, tasks, decision, challenges }: Re
     const groups = loose.length > 0 ? [...byStage, { title: null, tasks: loose }] : byStage;
     sections.push({ kind: "stages", done, total: tasks.length, groups });
   }
+
+  const budget = (project.budget ?? "").trim() || null;
+  const resources = (project.resources ?? "").trim() || null;
+  if (budget || resources) sections.push({ kind: "budget", budget, resources });
 
   if (challenges.length > 0) sections.push({ kind: "risks", items: challenges });
 

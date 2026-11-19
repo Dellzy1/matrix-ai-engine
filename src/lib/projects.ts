@@ -13,6 +13,8 @@ export type Project = {
   goal: string;
   expected_result: string;
   success_measure: string;
+  budget: string;
+  resources: string;
   selected_option: string | null;
   category: string;
   start_date: string | null;
@@ -66,6 +68,8 @@ export type ProjectInput = {
   goal: string;
   expected_result: string;
   success_measure: string;
+  budget?: string;
+  resources?: string;
   selected_option: string | null;
   // The calculator's top choice when the plan was created. The user does not change it.
   recommended_option?: string;

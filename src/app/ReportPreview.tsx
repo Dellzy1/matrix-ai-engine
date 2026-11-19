@@ -201,6 +201,15 @@ function SectionPreview({
         </section>
       );
 
+    case "budget":
+      return (
+        <section className="space-y-2 border-t border-slate-700/60 pt-4">
+          {heading(s.budgetHeading)}
+          {section.budget && row(s.labels.budget, section.budget)}
+          {section.resources && row(s.labels.resources, section.resources)}
+        </section>
+      );
+
     case "risks":
       return (
         <section className="space-y-2 border-t border-slate-700/60 pt-4">

@@ -185,6 +185,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       goal: project.goal,
       expected_result: project.expected_result,
       success_measure: project.success_measure,
+      budget: project.budget ?? "",
+      resources: project.resources ?? "",
       category: project.category,
       start_date: project.start_date,
       due_date: project.due_date,
@@ -202,6 +204,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       goal: draft.goal ?? "",
       expected_result: draft.expected_result ?? "",
       success_measure: draft.success_measure ?? "",
+      budget: draft.budget ?? "",
+      resources: draft.resources ?? "",
       category: draft.category ?? "Other",
       start_date: draft.start_date || null,
       due_date: draft.due_date || null,
@@ -426,6 +430,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
               {project.goal && <p><span className="text-slate-400">{t.fieldGoal}: </span>{project.goal}</p>}
               {project.expected_result && <p><span className="text-slate-400">{t.fieldExpected} </span>{project.expected_result}</p>}
               {project.success_measure && <p><span className="text-slate-400">{t.fieldMeasure} </span>{project.success_measure}</p>}
+              {project.budget && <p><span className="text-slate-400">{t.fieldBudget} </span>{project.budget}</p>}
+              {project.resources && <p><span className="text-slate-400">{t.fieldResources} </span>{project.resources}</p>}
               {project.selected_option && <p>{project.selected_option}</p>}
               {project.recommended_option && project.selected_option !== project.recommended_option && (
                 <p className="text-xs text-slate-400">{fmt(t.recommendedNote, { option: project.recommended_option })}</p>
@@ -462,6 +468,8 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
             <input className={field} value={draft.goal ?? ""} onChange={(e) => setDraft({ ...draft, goal: e.target.value })} placeholder={t.fieldGoal} />
             <input className={field} value={draft.expected_result ?? ""} onChange={(e) => setDraft({ ...draft, expected_result: e.target.value })} placeholder={t.fieldExpected} />
             <input className={field} value={draft.success_measure ?? ""} onChange={(e) => setDraft({ ...draft, success_measure: e.target.value })} placeholder={t.fieldMeasure} />
+            <input className={field} value={draft.budget ?? ""} onChange={(e) => setDraft({ ...draft, budget: e.target.value })} placeholder={t.fieldBudget} maxLength={200} />
+            <input className={field} value={draft.resources ?? ""} onChange={(e) => setDraft({ ...draft, resources: e.target.value })} placeholder={t.fieldResources} maxLength={300} />
             <input className={field} value={draft.selected_option ?? ""} onChange={(e) => setDraft({ ...draft, selected_option: e.target.value })} placeholder={t.fieldChosen} maxLength={200} />
             <div className="grid gap-3 sm:grid-cols-2">
               <input type="date" className={field} value={draft.start_date ?? ""} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} aria-label={t.fieldStart} />

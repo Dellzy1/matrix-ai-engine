@@ -4,6 +4,7 @@ import type { TaskStatus } from "./projects";
 // Labels for the Complete Decision & Action Report, in all six languages.
 export type ReportStrings = {
   kind: string;
+  budgetHeading: string;
   created: string;
   pageOf: string;
   sections: {
@@ -16,6 +17,8 @@ export type ReportStrings = {
     outcome: string;
   };
   labels: {
+    budget: string;
+    resources: string;
     goal: string;
     expected: string;
     measure: string;
@@ -44,6 +47,7 @@ export type ReportStrings = {
 export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   en: {
     kind: "Complete Decision & Action Report",
+    budgetHeading: "Budget and resources",
     created: "Created {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -56,6 +60,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       outcome: "Outcome and lessons",
     },
     labels: {
+      budget: "Budget", resources: "Resources",
       goal: "Goal", expected: "Expected result", measure: "Success measure",
       start: "Start", deadline: "Deadline", question: "Question", reason: "Reason",
       options: "Options", criteria: "Criteria", weight: "Weight", inverted: "Reversed",
@@ -67,6 +72,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   },
   fr: {
     kind: "Rapport complet de décision et d'action",
+    budgetHeading: "Budget et ressources",
     created: "Créé le {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -75,6 +81,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       risks: "Points de vigilance", outcome: "Résultat et enseignements",
     },
     labels: {
+      budget: "Budget", resources: "Ressources",
       goal: "Objectif", expected: "Résultat attendu", measure: "Mesure de réussite",
       start: "Début", deadline: "Échéance", question: "Question", reason: "Raison",
       options: "Options", criteria: "Critères", weight: "Poids", inverted: "Inversé",
@@ -86,6 +93,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   },
   es: {
     kind: "Informe completo de decisión y acción",
+    budgetHeading: "Presupuesto y recursos",
     created: "Creado el {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -94,6 +102,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       risks: "Puntos a revisar", outcome: "Resultado y aprendizajes",
     },
     labels: {
+      budget: "Presupuesto", resources: "Recursos",
       goal: "Objetivo", expected: "Resultado esperado", measure: "Medida de éxito",
       start: "Inicio", deadline: "Fecha límite", question: "Pregunta", reason: "Razón",
       options: "Opciones", criteria: "Criterios", weight: "Peso", inverted: "Invertido",
@@ -105,6 +114,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   },
   pt: {
     kind: "Relatório completo de decisão e ação",
+    budgetHeading: "Orçamento e recursos",
     created: "Criado em {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -113,6 +123,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       risks: "Pontos de atenção", outcome: "Resultado e aprendizados",
     },
     labels: {
+      budget: "Orçamento", resources: "Recursos",
       goal: "Objetivo", expected: "Resultado esperado", measure: "Medida de sucesso",
       start: "Início", deadline: "Prazo", question: "Pergunta", reason: "Motivo",
       options: "Opções", criteria: "Critérios", weight: "Peso", inverted: "Invertido",
@@ -124,6 +135,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   },
   sw: {
     kind: "Ripoti Kamili ya Uamuzi na Hatua",
+    budgetHeading: "Bajeti na rasilimali",
     created: "Imeundwa {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -132,6 +144,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       risks: "Mambo ya kuzingatia", outcome: "Matokeo na mafunzo",
     },
     labels: {
+      budget: "Bajeti", resources: "Rasilimali",
       goal: "Lengo", expected: "Matokeo yanayotarajiwa", measure: "Kipimo cha mafanikio",
       start: "Kuanza", deadline: "Tarehe ya mwisho", question: "Swali", reason: "Sababu",
       options: "Chaguo", criteria: "Vigezo", weight: "Uzito", inverted: "Imegeuzwa",
@@ -143,6 +156,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
   },
   zh: {
     kind: "完整决策与行动报告",
+    budgetHeading: "预算与资源",
     created: "创建于 {date}",
     pageOf: "{page} / {total}",
     sections: {
@@ -151,6 +165,7 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
       risks: "风险提示", outcome: "结果与经验",
     },
     labels: {
+      budget: "预算", resources: "资源",
       goal: "目标", expected: "预期结果", measure: "成功衡量标准",
       start: "开始日期", deadline: "截止日期", question: "问题", reason: "理由",
       options: "选项", criteria: "标准", weight: "权重", inverted: "反向计分",

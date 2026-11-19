@@ -141,6 +141,14 @@ function SectionView({ section, s, lang }: { section: ReportSection; s: ReportSt
       );
     }
 
+    case "budget":
+      return (
+        <Block heading={s.budgetHeading}>
+          {section.budget && <Row label={s.labels.budget} value={section.budget} />}
+          {section.resources && <Row label={s.labels.resources} value={section.resources} />}
+        </Block>
+      );
+
     case "risks":
       return (
         <Block heading={s.sections.risks}>
