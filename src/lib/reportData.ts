@@ -122,3 +122,51 @@ export function buildReport({ project, stages, tasks, decision, challenges }: Re
 
   return { title: project.title, sections };
 }
+
+// ---- Export choices: report type, audience and version ----
+
+export type ReportScope = "decision" | "action" | "complete";
+export type Audience = "investor" | "partner" | "management" | "team" | "client" | "personal" | "other";
+export type ReportVersion = "internal" | "presentation";
+
+export const AUDIENCES: Audience[] = ["investor", "partner", "management", "team", "client", "personal", "other"];
+
+type Kind = ReportSection["kind"];
+
+// Which sections each report type contains.
+const SCOPE_KINDS: Record<ReportScope, Kind[]> = {
+  decision: ["summary", "decision", "analysis", "choice"],
+  action: ["summary", "choice", "budget", "stages", "risks", "outcome"],
+  complete: ["summary", "decision", "analysis", "choice", "budget", "stages", "risks", "outcome"],
+};
+
+// The order sections are emphasised in for each audience. Every section still appears; only the order changes.
+const AUDIENCE_ORDER: Record<Audience, Kind[]> = {
+  investor: ["summary", "decision", "analysis", "choice", "budget", "risks", "stages", "outcome"],
+  partner: ["summary", "choice", "budget", "stages", "decision", "analysis", "risks", "outcome"],
+  management: ["summary", "choice", "stages", "budget", "outcome", "risks", "decision", "analysis"],
+  team: ["summary", "stages", "choice", "risks", "decision", "analysis", "budget", "outcome"],
+  client: ["summary", "choice", "stages", "outcome", "decision", "analysis", "budget", "risks"],
+  personal: ["summary", "stages", "choice", "budget", "risks", "decision", "analysis", "outcome"],
+  other: ["summary", "decision", "analysis", "choice", "budget", "stages", "risks", "outcome"],
+};
+
+export function hasDecision(model: ReportModel): boolean {
+  return model.sections.some((s) => s.kind === "decision");
+}
+
+// Builds the report for one export: picks the report type, orders the sections for the audience,
+// and removes the sections the user switched off. It never adds information that is not in the model.
+export function shapeReport(
+  model: ReportModel,
+  opts: { scope: ReportScope; audience: Audience; version: ReportVersion; excluded: ReadonlySet<string> },
+): ReportModel {
+  const allowed = new Set<Kind>(SCOPE_KINDS[opts.scope]);
+  // The presentation version leaves out the weak points, which are for internal use.
+  if (opts.version === "presentation") allowed.delete("risks");
+  const order = AUDIENCE_ORDER[opts.audience];
+  const sections = model.sections
+    .filter((s) => allowed.has(s.kind) && !opts.excluded.has(s.kind))
+    .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  return { title: model.title, sections };
+}

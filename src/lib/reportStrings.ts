@@ -1,5 +1,6 @@
 import type { Lang } from "./i18n";
 import type { TaskStatus } from "./projects";
+import type { Audience } from "./reportData";
 
 // Labels for the Complete Decision & Action Report, in all six languages.
 export type ReportStrings = {
@@ -261,5 +262,85 @@ export const REPORT_UI: Record<Lang, ReportUi> = {
     downloadFailed: "无法生成 PDF，请重试。",
     note: "这就是您的 PDF 的样子。文件在您的设备上生成，不会上传。",
     noDecision: "此计划未关联已保存的决策，因此报告没有计算器部分。",
+  },
+};
+
+// Labels for choosing the report type, audience and version.
+export type ReportChooser = {
+  typeLabel: string;
+  typeDecision: string;
+  typeAction: string;
+  typeComplete: string;
+  typeNeedsDecision: string;
+  audienceLabel: string;
+  audience: Record<Audience, string>;
+  versionLabel: string;
+  versionInternal: string;
+  versionPresentation: string;
+  versionInternalHint: string;
+  versionPresentationHint: string;
+  includeLabel: string;
+};
+
+export const REPORT_CHOOSER: Record<Lang, ReportChooser> = {
+  en: {
+    typeLabel: "Report type", typeDecision: "Decision Report", typeAction: "Action Plan Report",
+    typeComplete: "Complete Report", typeNeedsDecision: "Needs a saved decision",
+    audienceLabel: "Who is this report for?",
+    audience: { investor: "Investor", partner: "Business partner", management: "Management", team: "Project team", client: "Client", personal: "Personal use", other: "Other" },
+    versionLabel: "Version", versionInternal: "Internal", versionPresentation: "Presentation",
+    versionInternalHint: "All details, including notes and weak points.",
+    versionPresentationHint: "Polished for sharing. Leaves out weak points.",
+    includeLabel: "What is included (untick to remove)",
+  },
+  fr: {
+    typeLabel: "Type de rapport", typeDecision: "Rapport de décision", typeAction: "Rapport du plan d'action",
+    typeComplete: "Rapport complet", typeNeedsDecision: "Nécessite une décision enregistrée",
+    audienceLabel: "Pour qui est ce rapport ?",
+    audience: { investor: "Investisseur", partner: "Associé", management: "Direction", team: "Équipe projet", client: "Client", personal: "Usage personnel", other: "Autre" },
+    versionLabel: "Version", versionInternal: "Interne", versionPresentation: "Présentation",
+    versionInternalHint: "Tous les détails, y compris les notes et les points faibles.",
+    versionPresentationHint: "Soigné pour le partage. Retire les points faibles.",
+    includeLabel: "Ce qui est inclus (décochez pour retirer)",
+  },
+  es: {
+    typeLabel: "Tipo de informe", typeDecision: "Informe de decisión", typeAction: "Informe del plan de acción",
+    typeComplete: "Informe completo", typeNeedsDecision: "Requiere una decisión guardada",
+    audienceLabel: "¿Para quién es este informe?",
+    audience: { investor: "Inversor", partner: "Socio comercial", management: "Dirección", team: "Equipo de proyecto", client: "Cliente", personal: "Uso personal", other: "Otro" },
+    versionLabel: "Versión", versionInternal: "Interna", versionPresentation: "Presentación",
+    versionInternalHint: "Todos los detalles, incluidas notas y puntos débiles.",
+    versionPresentationHint: "Pulida para compartir. Omite los puntos débiles.",
+    includeLabel: "Lo que se incluye (desmarque para quitar)",
+  },
+  pt: {
+    typeLabel: "Tipo de relatório", typeDecision: "Relatório de decisão", typeAction: "Relatório do plano de ação",
+    typeComplete: "Relatório completo", typeNeedsDecision: "Precisa de uma decisão salva",
+    audienceLabel: "Para quem é este relatório?",
+    audience: { investor: "Investidor", partner: "Sócio", management: "Gestão", team: "Equipe do projeto", client: "Cliente", personal: "Uso pessoal", other: "Outro" },
+    versionLabel: "Versão", versionInternal: "Interna", versionPresentation: "Apresentação",
+    versionInternalHint: "Todos os detalhes, incluindo notas e pontos fracos.",
+    versionPresentationHint: "Polida para compartilhar. Deixa de fora os pontos fracos.",
+    includeLabel: "O que está incluído (desmarque para remover)",
+  },
+  sw: {
+    typeLabel: "Aina ya ripoti", typeDecision: "Ripoti ya uamuzi", typeAction: "Ripoti ya mpango wa hatua",
+    typeComplete: "Ripoti kamili", typeNeedsDecision: "Inahitaji uamuzi uliohifadhiwa",
+    audienceLabel: "Ripoti hii ni ya nani?",
+    audience: { investor: "Mwekezaji", partner: "Mshirika wa biashara", management: "Uongozi", team: "Timu ya mradi", client: "Mteja", personal: "Matumizi binafsi", other: "Nyingine" },
+    versionLabel: "Toleo", versionInternal: "La ndani", versionPresentation: "Wasilisho",
+    versionInternalHint: "Maelezo yote, pamoja na vidokezo na udhaifu.",
+    versionPresentationHint: "Imeboreshwa kwa kushiriki. Haijumuishi udhaifu.",
+    includeLabel: "Kilichojumuishwa (ondoa alama kuondoa)",
+  },
+  zh: {
+    typeLabel: "报告类型", typeDecision: "决策报告", typeAction: "行动计划报告",
+    typeComplete: "完整报告", typeNeedsDecision: "需要已保存的决策",
+    audienceLabel: "这份报告给谁看？",
+    audience: { investor: "投资人", partner: "合作伙伴", management: "管理层", team: "项目团队", client: "客户", personal: "个人使用", other: "其他" },
+    versionLabel: "版本", versionInternal: "内部版", versionPresentation: "展示版",
+    versionInternalHint: "包含全部细节，包括备注和薄弱环节。",
+    versionPresentationHint: "适合对外分享，不含薄弱环节。",
+    includeLabel: "包含的内容（取消勾选即可移除）",
   },
 };

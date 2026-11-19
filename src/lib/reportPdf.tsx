@@ -168,8 +168,19 @@ function SectionView({ section, s, lang }: { section: ReportSection; s: ReportSt
   }
 }
 
-export function ReportDocument({ report, lang, createdOn }: { report: ReportModel; lang: Lang; createdOn: string }) {
+export function ReportDocument({
+  report,
+  lang,
+  createdOn,
+  kindLabel,
+}: {
+  report: ReportModel;
+  lang: Lang;
+  createdOn: string;
+  kindLabel?: string;
+}) {
   const s = REPORT_STRINGS[lang];
+  const heading = kindLabel ?? s.kind;
   const family = fontFamilyFor(lang);
   if (family === CJK_FAMILY) registerChineseFont();
   const styles = makeStyles(family);
@@ -178,7 +189,7 @@ export function ReportDocument({ report, lang, createdOn }: { report: ReportMode
       <Document title={report.title} author="Decision Loop" subject={s.kind}>
         <Page size="A4" style={styles.page}>
           <Text style={styles.title}>{report.title}</Text>
-          <Text style={styles.kind}>{`${s.kind} · ${fillDate(s.created, createdOn)}`}</Text>
+          <Text style={styles.kind}>{`${heading} · ${fillDate(s.created, createdOn)}`}</Text>
           {report.sections.map((section, i) => (
             <SectionView key={`${section.kind}-${i}`} section={section} s={s} lang={lang} />
           ))}

@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Download, X } from "lucide-react";
 import type { DocumentProps } from "@react-pdf/renderer";
 import type { Lang } from "@/lib/i18n";
 import { loadReportInput } from "@/lib/loadReport";
-import { buildReport, type ReportModel, type ReportSection } from "@/lib/reportData";
-import { REPORT_STRINGS, REPORT_UI, fill } from "@/lib/reportStrings";
+import {
+  AUDIENCES,
+  buildReport,
+  hasDecision,
+  shapeReport,
+  type Audience,
+  type ReportModel,
+  type ReportScope,
+  type ReportSection,
+  type ReportVersion,
+} from "@/lib/reportData";
+import { REPORT_CHOOSER, REPORT_STRINGS, REPORT_UI, fill } from "@/lib/reportStrings";
 import { challengeText } from "@/lib/challengeStrings";
 import { todayKey } from "@/lib/planDates";
 
@@ -19,13 +29,22 @@ type Props = {
 };
 
 const card = "bg-[#0b0f2a]/70 border border-indigo-500/25 rounded-2xl";
+const choice = (on: boolean) =>
+  `rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+    on ? "border-indigo-400 bg-indigo-600 text-white" : "border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/20"
+  }`;
 
-// Shows the report on screen, exactly as the PDF will lay it out. Nothing here is saved or uploaded.
+// Lets the user choose the report type, audience, version and sections, then shows and downloads it.
 export default function ReportPreview({ lang, supabase, projectId, onClose }: Props) {
   const s = REPORT_STRINGS[lang];
   const ui = REPORT_UI[lang];
-  const [report, setReport] = useState<ReportModel | null>(null);
+  const ch = REPORT_CHOOSER[lang];
+  const [full, setFull] = useState<ReportModel | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scope, setScope] = useState<ReportScope>("complete");
+  const [audience, setAudience] = useState<Audience>("other");
+  const [version, setVersion] = useState<ReportVersion>("internal");
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -37,16 +56,42 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
         setError(ui.notFound);
         return;
       }
-      setReport(buildReport(input));
+      const model = buildReport(input);
+      setFull(model);
+      // A plan with no saved decision can only be an action plan report.
+      if (!hasDecision(model)) setScope("action");
     });
     return () => {
       cancelled = true;
     };
   }, [supabase, projectId, ui.notFound]);
 
+  const linked = full ? hasDecision(full) : false;
+
+  // What the user has ticked: every section of this report type, before any were switched off.
+  const checklist = useMemo(
+    () => (full ? shapeReport(full, { scope, audience, version, excluded: new Set() }) : null),
+    [full, scope, audience, version],
+  );
+  const shaped = useMemo(
+    () => (full ? shapeReport(full, { scope, audience, version, excluded }) : null),
+    [full, scope, audience, version, excluded],
+  );
+
+  const kindLabel = scope === "decision" ? ch.typeDecision : scope === "action" ? ch.typeAction : s.kind;
+
+  const toggle = (kind: string) => {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  };
+
   // The PDF library and the report layout load only when the button is pressed.
   const download = async () => {
-    if (!report) return;
+    if (!shaped) return;
     setBusy(true);
     setDownloadError(null);
     try {
@@ -54,12 +99,14 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
         import("@react-pdf/renderer"),
         import("@/lib/reportPdf"),
       ]);
-      const doc = <ReportDocument report={report} lang={lang} createdOn={todayKey()} />;
+      const doc = (
+        <ReportDocument report={shaped} lang={lang} createdOn={todayKey()} kindLabel={kindLabel} />
+      );
       const blob = await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `decision-report-${todayKey()}.pdf`;
+      link.download = `${scope}-report-${todayKey()}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -71,7 +118,7 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
     }
   };
 
-  const hasDecision = !!report?.sections.some((x) => x.kind === "decision");
+  const sectionName = (kind: ReportSection["kind"]) => (kind === "budget" ? s.budgetHeading : s.sections[kind]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#070b1f] text-slate-100">
@@ -83,13 +130,78 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
           </button>
         </div>
 
-        {!report && !error && <p className="text-sm text-slate-300">{ui.loading}</p>}
+        {!full && !error && <p className="text-sm text-slate-300">{ui.loading}</p>}
         {error && <p className="text-sm text-rose-300">{error}</p>}
 
-        {report && (
+        {full && shaped && checklist && (
           <>
+            <section className={`${card} p-4 space-y-4`}>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400">{ch.typeLabel}</p>
+                <div className="flex flex-wrap gap-2">
+                  {(["decision", "action", "complete"] as ReportScope[]).map((value) => {
+                    const needsDecision = value !== "action" && !linked;
+                    const label = value === "decision" ? ch.typeDecision : value === "action" ? ch.typeAction : ch.typeComplete;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={needsDecision}
+                        onClick={() => setScope(value)}
+                        className={`${choice(scope === value)} disabled:opacity-40`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!linked && <p className="text-xs text-amber-300">{ch.typeNeedsDecision}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400">{ch.audienceLabel}</p>
+                <div className="flex flex-wrap gap-2">
+                  {AUDIENCES.map((value) => (
+                    <button key={value} type="button" onClick={() => setAudience(value)} className={choice(audience === value)}>
+                      {ch.audience[value]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400">{ch.versionLabel}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setVersion("internal")} className={choice(version === "internal")}>
+                    {ch.versionInternal}
+                  </button>
+                  <button type="button" onClick={() => setVersion("presentation")} className={choice(version === "presentation")}>
+                    {ch.versionPresentation}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {version === "internal" ? ch.versionInternalHint : ch.versionPresentationHint}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400">{ch.includeLabel}</p>
+                {checklist.sections.map((section) => (
+                  <label key={section.kind} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!excluded.has(section.kind)}
+                      onChange={() => toggle(section.kind)}
+                      className="h-4 w-4 accent-indigo-500"
+                    />
+                    {sectionName(section.kind)}
+                  </label>
+                ))}
+              </div>
+            </section>
+
             <p className="text-xs text-slate-400">{ui.note}</p>
-            {!hasDecision && <p className="text-xs text-amber-300">{ui.noDecision}</p>}
+            {!linked && <p className="text-xs text-amber-300">{ui.noDecision}</p>}
 
             <button
               type="button"
@@ -103,10 +215,10 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
 
             <article className={`${card} p-5 space-y-5`}>
               <div>
-                <h2 className="text-xl font-bold">{report.title}</h2>
-                <p className="text-xs text-slate-400">{`${s.kind} · ${fill(s.created, { date: todayKey() })}`}</p>
+                <h2 className="text-xl font-bold">{full.title}</h2>
+                <p className="text-xs text-slate-400">{`${kindLabel} · ${fill(s.created, { date: todayKey() })}`}</p>
               </div>
-              {report.sections.map((section, i) => (
+              {shaped.sections.map((section, i) => (
                 <SectionPreview key={`${section.kind}-${i}`} section={section} s={s} lang={lang} />
               ))}
             </article>
