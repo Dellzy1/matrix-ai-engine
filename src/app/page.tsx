@@ -25,6 +25,9 @@ import { PLAN_STRINGS } from "@/lib/planStrings";
 import { buildHomeMessage } from "@/lib/homeMessages";
 import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep";
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
+import CalculatorPDFDownload from "./CalculatorPDFDownload";
+import { buildCalculatorReport } from "@/lib/calculatorReport";
+import { todayKey } from "@/lib/planDates";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
@@ -300,6 +303,20 @@ export default function App() {
   // Derived values
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
   const checks = useMemo(() => automaticChecks(criteria, ranked, t), [criteria, ranked, t]);
+  // The PDF data is read from what the Calculator shows now. Downloading never changes it.
+  const calcReport = useMemo(
+    () =>
+      buildCalculatorReport({
+        title: promptInput,
+        reason,
+        reviewDate,
+        generatedAt: todayKey(),
+        saved: !!activeDecisionId,
+        criteria,
+        ranked,
+      }),
+    [promptInput, reason, reviewDate, activeDecisionId, criteria, ranked],
+  );
   const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   const shareOf = (weight: number) => (totalWeight > 0 ? Math.round((weight / totalWeight) * 100) : 0);
   const missingScores = options.some((o) =>
@@ -1266,6 +1283,7 @@ export default function App() {
                     printLabel={t.exportPrintOption}
                     phoneHint={t.exportPhoneHint}
                   />
+                  <CalculatorPDFDownload lang={lang} report={calcReport} />
                   <button
                     onClick={handleSaveMatrix}
                     disabled={saving}
