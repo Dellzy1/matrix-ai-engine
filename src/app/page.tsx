@@ -27,7 +27,6 @@ import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep"
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 import CalculatorPDFDownload from "./CalculatorPDFDownload";
 import { buildCalculatorReport } from "@/lib/calculatorReport";
-import { todayKey } from "@/lib/planDates";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
@@ -310,7 +309,8 @@ export default function App() {
         title: promptInput,
         reason,
         reviewDate,
-        generatedAt: todayKey(),
+        // The date is filled in when the user presses download, not while the page is built.
+        generatedAt: "",
         saved: !!activeDecisionId,
         criteria,
         ranked,

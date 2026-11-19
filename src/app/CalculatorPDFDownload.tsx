@@ -27,7 +27,9 @@ export default function CalculatorPDFDownload({ lang, report }: Props) {
         import("@react-pdf/renderer"),
         import("@/lib/calculatorReportPdf"),
       ]);
-      const doc = <CalculatorReportDocument report={report} lang={lang} />;
+      // The date is read now, at the moment of download.
+      const dated = { ...report, generatedAt: todayKey() };
+      const doc = <CalculatorReportDocument report={dated} lang={lang} />;
       const blob = await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
