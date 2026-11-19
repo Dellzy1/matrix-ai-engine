@@ -6,6 +6,8 @@ import type { Challenge } from "./challenges";
 
 export type DecisionRecord = {
   title: string;
+  // complete, calculator_only or action_plan_only; set when the decision is saved
+  report_type?: string | null;
   reason: string | null;
   criteria: { id: string; name: string; weight: number; isInverted: boolean }[];
   options: { id: string; name: string; scores: Record<string, number | null> }[];

@@ -27,6 +27,7 @@ import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep"
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 import CalculatorPDFDownload from "./CalculatorPDFDownload";
 import { buildCalculatorReport } from "@/lib/calculatorReport";
+import { SAVE_CHOICE_STRINGS, type SaveChoice } from "@/lib/saveChoiceStrings";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
@@ -279,6 +280,8 @@ export default function App() {
   const [actualOutcome, setActualOutcome] = useState("");
 
   const [savedMatrices, setSavedMatrices] = useState<any[]>([]);
+  // Shown when a new Calculator result is saved, so the user picks what it includes.
+  const [saveChoiceOpen, setSaveChoiceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleForgotPassword = async () => {
@@ -706,7 +709,24 @@ export default function App() {
     });
   };
 
-  const handleSaveMatrix = async () => {
+  // Saves the decision with the chosen report type, then opens a plan when the choice needs one.
+  const saveWithChoice = async (choice: SaveChoice) => {
+    setSaveChoiceOpen(false);
+    if (choice === "calculator_only") {
+      await handleSaveMatrix(choice);
+      return;
+    }
+    const id = await handleSaveMatrix(choice);
+    if (!id) return;
+    openActionPlan({
+      decisionId: id,
+      title: promptInput.trim() || t.decisionAnalysis,
+      selectedOption: ranked[0]?.name ?? "",
+      reason: reason.trim(),
+    });
+  };
+
+  const handleSaveMatrix = async (choice?: SaveChoice) => {
     if (!supabase || !user) {
       openAuth("signin");
       return;
@@ -728,6 +748,8 @@ export default function App() {
       review_date: reviewDate || null,
       actual_outcome: hasOutcome ? actualOutcome.trim() : null,
       status: hasOutcome ? "reviewed" : "pending",
+      // Only a new decision gets a report type; updating keeps the one it has.
+      ...(activeDecisionId ? {} : { report_type: choice ?? "complete" }),
     };
 
     setSaving(true);
@@ -1284,8 +1306,40 @@ export default function App() {
                     phoneHint={t.exportPhoneHint}
                   />
                   <CalculatorPDFDownload lang={lang} report={calcReport} />
+                  {saveChoiceOpen && (
+                    <div
+                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                      onClick={() => setSaveChoiceOpen(false)}
+                    >
+                      <div
+                        className="w-full max-w-sm space-y-3 rounded-2xl border border-indigo-500/40 bg-[#0b0f2a] p-5 text-slate-100 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <p className="font-bold">{SAVE_CHOICE_STRINGS[lang].title}</p>
+                        {([
+                          ["complete", SAVE_CHOICE_STRINGS[lang].complete, SAVE_CHOICE_STRINGS[lang].completeHint],
+                          ["calculator_only", SAVE_CHOICE_STRINGS[lang].calculatorOnly, SAVE_CHOICE_STRINGS[lang].calculatorOnlyHint],
+                          ["action_plan_only", SAVE_CHOICE_STRINGS[lang].planOnly, SAVE_CHOICE_STRINGS[lang].planOnlyHint],
+                        ] as const).map(([value, label, hint]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => saveWithChoice(value)}
+                            disabled={saving}
+                            className="block w-full rounded-xl border border-indigo-500/40 px-4 py-3 text-left hover:bg-indigo-500/20 disabled:opacity-60"
+                          >
+                            <span className="block text-sm font-semibold">{label}</span>
+                            <span className="block text-xs text-slate-400">{hint}</span>
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => setSaveChoiceOpen(false)} className="text-xs text-slate-400 hover:text-slate-200">
+                          {SAVE_CHOICE_STRINGS[lang].cancel}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <button
-                    onClick={handleSaveMatrix}
+                    onClick={() => (activeDecisionId ? handleSaveMatrix() : setSaveChoiceOpen(true))}
                     disabled={saving}
                     className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-medium px-4 py-2 rounded-xl shadow"
                   >

@@ -17,7 +17,7 @@ export async function loadReportInput(
   if (project.decision_id) {
     const { data, error: decisionError } = await sb
       .from("matrices")
-      .select("title, reason, criteria, options, actual_outcome, review_date")
+      .select("title, reason, criteria, options, actual_outcome, review_date, report_type")
       .eq("id", project.decision_id)
       .maybeSingle();
     if (!decisionError && data) {
@@ -28,6 +28,7 @@ export async function loadReportInput(
         options: (data.options ?? []) as DecisionRecord["options"],
         actual_outcome: data.actual_outcome ?? null,
         review_date: data.review_date ?? null,
+        report_type: data.report_type ?? null,
       };
     }
   }

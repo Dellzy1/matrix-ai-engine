@@ -59,7 +59,9 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
       const model = buildReport(input);
       setFull(model);
       // A plan with no saved decision can only be an action plan report.
-      if (!hasDecision(model)) setScope("action");
+      // The report opens on the choice made when the decision was saved.
+      const linkedType = input.decision?.report_type;
+      setScope(!hasDecision(model) || linkedType === "action_plan_only" ? "action" : "complete");
     });
     return () => {
       cancelled = true;
