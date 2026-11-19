@@ -2,13 +2,15 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ArrowLeft, ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Copy, FileText, Pencil, Trash2 } from "lucide-react";
 import { fmt, type Lang } from "@/lib/i18n";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { dueState, todayKey } from "@/lib/planDates";
 import { nextStepFor, taskMatchesFocus, type NextAction } from "@/lib/nextStep";
 import { nextStepText } from "@/lib/nextStepStrings";
 import NextStepCard from "./NextStepCard";
+import ReportPreview from "./ReportPreview";
+import { REPORT_UI } from "@/lib/reportStrings";
 import ChallengePanel from "./ChallengePanel";
 import { challengesFor } from "@/lib/challenges";
 import {
@@ -84,6 +86,7 @@ const PRIORITY_STYLE: Record<Priority, string> = {
 
 export default function ProjectDetail({ lang, supabase, userId, projectId, focus, onBack }: Props) {
   const t = PLAN_STRINGS[lang];
+  const [showReport, setShowReport] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -389,6 +392,19 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       <button type="button" onClick={onBack} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200">
         <ArrowLeft className="w-4 h-4" /> {t.back}
       </button>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowReport(true)}
+          className="flex items-center gap-2 rounded-xl border border-indigo-500/40 px-3 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20"
+        >
+          <FileText className="w-4 h-4" /> {REPORT_UI[lang].openPreview}
+        </button>
+      </div>
+      {showReport && (
+        <ReportPreview lang={lang} supabase={supabase} projectId={projectId} onClose={() => setShowReport(false)} />
+      )}
 
       {error && <p className="text-sm text-rose-300">{error}</p>}
 

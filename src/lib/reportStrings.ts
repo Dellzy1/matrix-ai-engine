@@ -166,3 +166,85 @@ export const REPORT_STRINGS: Record<Lang, ReportStrings> = {
 export function fill(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => (key in vars ? String(vars[key]) : `{${key}}`));
 }
+
+// Labels for the preview screen and its buttons.
+export type ReportUi = {
+  openPreview: string;
+  preview: string;
+  download: string;
+  close: string;
+  loading: string;
+  notFound: string;
+  downloadFailed: string;
+  note: string;
+  noDecision: string;
+};
+
+export const REPORT_UI: Record<Lang, ReportUi> = {
+  en: {
+    openPreview: "Preview report",
+    preview: "Report preview",
+    download: "Download PDF",
+    close: "Close",
+    loading: "Preparing your report…",
+    notFound: "This plan could not be loaded.",
+    downloadFailed: "The PDF could not be made. Please try again.",
+    note: "This is how your PDF will look. The file is made on your device and is not uploaded.",
+    noDecision: "This plan is not linked to a saved decision, so the report has no calculator section.",
+  },
+  fr: {
+    openPreview: "Aperçu du rapport",
+    preview: "Aperçu du rapport",
+    download: "Télécharger le PDF",
+    close: "Fermer",
+    loading: "Préparation de votre rapport…",
+    notFound: "Ce plan n'a pas pu être chargé.",
+    downloadFailed: "Le PDF n'a pas pu être créé. Veuillez réessayer.",
+    note: "Voici à quoi ressemblera votre PDF. Le fichier est créé sur votre appareil et n'est pas envoyé.",
+    noDecision: "Ce plan n'est lié à aucune décision enregistrée, le rapport n'a donc pas de section calculatrice.",
+  },
+  es: {
+    openPreview: "Vista previa del informe",
+    preview: "Vista previa del informe",
+    download: "Descargar PDF",
+    close: "Cerrar",
+    loading: "Preparando su informe…",
+    notFound: "No se pudo cargar este plan.",
+    downloadFailed: "No se pudo crear el PDF. Inténtelo de nuevo.",
+    note: "Así se verá su PDF. El archivo se crea en su dispositivo y no se sube.",
+    noDecision: "Este plan no está vinculado a una decisión guardada, así que el informe no tiene sección de calculadora.",
+  },
+  pt: {
+    openPreview: "Visualizar relatório",
+    preview: "Pré-visualização do relatório",
+    download: "Baixar PDF",
+    close: "Fechar",
+    loading: "Preparando seu relatório…",
+    notFound: "Não foi possível carregar este plano.",
+    downloadFailed: "Não foi possível criar o PDF. Tente novamente.",
+    note: "Assim vai ficar o seu PDF. O arquivo é criado no seu dispositivo e não é enviado.",
+    noDecision: "Este plano não está ligado a uma decisão salva, então o relatório não tem seção de calculadora.",
+  },
+  sw: {
+    openPreview: "Angalia ripoti",
+    preview: "Muhtasari wa ripoti",
+    download: "Pakua PDF",
+    close: "Funga",
+    loading: "Tunaandaa ripoti yako…",
+    notFound: "Mpango huu haukuweza kupakiwa.",
+    downloadFailed: "PDF haikuweza kutengenezwa. Tafadhali jaribu tena.",
+    note: "Hivi ndivyo PDF yako itakavyoonekana. Faili hutengenezwa kwenye kifaa chako na haipakiwi.",
+    noDecision: "Mpango huu haujaunganishwa na uamuzi uliohifadhiwa, kwa hivyo ripoti haina sehemu ya kikokotoo.",
+  },
+  zh: {
+    openPreview: "预览报告",
+    preview: "报告预览",
+    download: "下载 PDF",
+    close: "关闭",
+    loading: "正在准备您的报告…",
+    notFound: "无法加载此计划。",
+    downloadFailed: "无法生成 PDF，请重试。",
+    note: "这就是您的 PDF 的样子。文件在您的设备上生成，不会上传。",
+    noDecision: "此计划未关联已保存的决策，因此报告没有计算器部分。",
+  },
+};
