@@ -31,6 +31,8 @@ export type CalcReportStrings = {
   disclaimerSaved: string;
   tagline: string;
   pageOf: string;
+  reasonsHeading: string;
+  reasonLabel: string;
 };
 
 export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
@@ -64,6 +66,8 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "This document represents the results of a Decision Loop Calculator analysis. It is provided for review and reference.",
     tagline: "Decision Loop — Think Clearly. Decide Confidently. Take Action.",
     pageOf: "{page} / {total}",
+    reasonsHeading: "Reasons for the Scores",
+    reasonLabel: "Reason",
   },
   fr: {
     download: "Télécharger le rapport PDF",
@@ -95,6 +99,8 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "Ce document présente les résultats d'une analyse de la calculatrice Decision Loop. Il est fourni pour examen et référence.",
     tagline: "Decision Loop — Pensez clairement. Décidez avec confiance. Passez à l'action.",
     pageOf: "{page} / {total}",
+    reasonsHeading: "Raisons des scores",
+    reasonLabel: "Raison",
   },
   es: {
     download: "Descargar informe PDF",
@@ -126,6 +132,8 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "Este documento presenta los resultados de un análisis de la calculadora de Decision Loop. Se entrega para revisión y referencia.",
     tagline: "Decision Loop — Piense con claridad. Decida con confianza. Actúe.",
     pageOf: "{page} / {total}",
+    reasonsHeading: "Razones de las puntuaciones",
+    reasonLabel: "Motivo",
   },
   pt: {
     download: "Baixar relatório PDF",
@@ -157,6 +165,8 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "Este documento apresenta os resultados de uma análise da calculadora do Decision Loop. Ele é fornecido para revisão e referência.",
     tagline: "Decision Loop — Pense com clareza. Decida com confiança. Aja.",
     pageOf: "{page} / {total}",
+    reasonsHeading: "Razões das pontuações",
+    reasonLabel: "Motivo",
   },
   sw: {
     download: "Pakua ripoti ya PDF",
@@ -188,6 +198,8 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "Hati hii inawasilisha matokeo ya uchambuzi wa kikokotoo cha Decision Loop. Imetolewa kwa ajili ya mapitio na marejeo.",
     tagline: "Decision Loop — Fikiri kwa uwazi. Amua kwa ujasiri. Chukua hatua.",
     pageOf: "{page} / {total}",
+    reasonsHeading: "Sababu za alama",
+    reasonLabel: "Sababu",
   },
   zh: {
     download: "下载 PDF 报告",
@@ -219,5 +231,7 @@ export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
     disclaimerSaved: "本文件展示 Decision Loop 计算器分析的结果，仅供审阅和参考。",
     tagline: "Decision Loop — 清晰思考，自信决策，立即行动。",
     pageOf: "{page} / {total}",
+    reasonsHeading: "评分理由",
+    reasonLabel: "理由",
   },
 };

@@ -167,6 +167,31 @@ export function CalculatorReportDocument({ report, lang }: { report: CalculatorR
         {pageOf(st, false)}
       </Page>
 
+      {/* Reasons for scores: only the notes the user typed. Shown only when there are some. */}
+      {report.options.some((o) => o.reasons.length > 0) && (
+        <Page size="A4" style={st.page}>
+          <Text style={st.heading}>{c.reasonsHeading}</Text>
+          <View style={st.accent} />
+          {report.options
+            .filter((o) => o.reasons.length > 0)
+            .map((opt) => (
+              <View key={opt.id} style={{ marginBottom: 10 }}>
+                <Text style={[st.bold, { fontSize: 11, marginBottom: 4 }]}>{opt.name || c.unnamed}</Text>
+                {opt.reasons.map((r) => (
+                  <View key={r.criterionId} wrap={false} style={st.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.bold}>{nameOf(r.criterionName)}</Text>
+                      <Text style={st.muted}>{`${c.reasonLabel}: ${r.text}`}</Text>
+                    </View>
+                    <Text style={{ width: 60, textAlign: "right", fontWeight: "bold" }}>{`${r.score ?? "–"}/10`}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          {pageOf(st, false)}
+        </Page>
+      )}
+
       {/* Disclaimer */}
       <Page size="A4" style={st.page}>
         <Text style={st.heading}>{report.saved ? c.disclaimerSaved : c.disclaimerNotSaved}</Text>

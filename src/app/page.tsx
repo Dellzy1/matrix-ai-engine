@@ -19,7 +19,8 @@ import type { PlanSeed } from "./ActionPlan";
 import SettingsPanel from "./SettingsPanel";
 import { TOOL_STRINGS } from "@/lib/toolStrings";
 import { SETTINGS_STRINGS } from "@/lib/settingsStrings";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon, MessageSquareQuote } from "lucide-react";
+import { SCORE_NOTE_STRINGS } from "@/lib/scoreNoteStrings";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { buildHomeMessage } from "@/lib/homeMessages";
@@ -43,7 +44,8 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 
 type T = (typeof STRINGS)["en"];
 type Criterion = { id: string; name: string; weight: number; isInverted: boolean };
-type Option = { id: string; name: string; scores: Record<string, number | null> };
+// notes: optional "Why this score?" text, keyed by criterion id. Only text the user typed.
+type Option = { id: string; name: string; scores: Record<string, number | null>; notes?: Record<string, string> };
 type ScoredOption = Option & { score: number };
 type Notice = { type: "error" | "success"; text: string } | null;
 type AuthUser = { id: string; email: string };
@@ -132,7 +134,12 @@ const DECISION_TEMPLATES: Array<{
 ];
 
 const hydrateOptions = (rows: any[]): Option[] =>
-  rows.map((o) => ({ id: o.id ?? uid(), name: String(o.name ?? "Option"), scores: { ...(o.scores ?? {}) } }));
+  rows.map((o) => ({
+    id: o.id ?? uid(),
+    name: String(o.name ?? "Option"),
+    scores: { ...(o.scores ?? {}) },
+    notes: o.notes && typeof o.notes === "object" ? { ...o.notes } : {},
+  }));
 
 const hydrateCriteria = (rows: any[]): Criterion[] =>
   rows.map((c) => ({
@@ -642,6 +649,21 @@ export default function App() {
       prev.map((o) => (o.id === optId ? { ...o, scores: { ...o.scores, [critId]: value } } : o))
     );
 
+  // Which score note is open, as "optionId:criterionId". Null means all notes are collapsed.
+  const [openNote, setOpenNote] = useState<string | null>(null);
+
+  // Saving an empty note removes it, so only real text is kept. Changing a score never touches its note.
+  const setScoreNote = (optId: string, critId: string, text: string) =>
+    setOptions((prev) =>
+      prev.map((o) => {
+        if (o.id !== optId) return o;
+        const notes = { ...(o.notes ?? {}) };
+        if (text.trim()) notes[critId] = text;
+        else delete notes[critId];
+        return { ...o, notes };
+      })
+    );
+
   const clampOnBlur = (optId: string, critId: string) =>
     setOptions((prev) =>
       prev.map((o) => {
@@ -757,6 +779,15 @@ export default function App() {
         id: o.id,
         name: o.name.trim(),
         scores: Object.fromEntries(criteria.map((c) => [c.id, clampScore(o.scores[c.id] as number)] as const)),
+        // Only notes for criteria that still exist, and only the ones with text.
+        ...(() => {
+          const notes = Object.fromEntries(
+            criteria
+              .map((c) => [c.id, (o.notes?.[c.id] ?? "").trim()] as const)
+              .filter(([, text]) => text !== "")
+          );
+          return Object.keys(notes).length ? { notes } : {};
+        })(),
       })),
       review_date: reviewDate || null,
       actual_outcome: hasOutcome ? actualOutcome.trim() : null,
@@ -1239,7 +1270,7 @@ export default function App() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                         {criteria.map((crit) => (
-                          <label key={crit.id} className="space-y-1">
+                          <div key={crit.id} className="space-y-1">
                             <span className="text-[10px] text-slate-400 block truncate">
                               {crit.name || t.unnamedCriterion}
                               {crit.isInverted ? t.lowerIsBetterParen : ""}
@@ -1254,7 +1285,50 @@ export default function App() {
                               onBlur={() => clampOnBlur(opt.id, crit.id)}
                               className={`w-full ${field} border rounded-lg px-2.5 py-1.5 text-xs`}
                             />
-                          </label>
+                            {(() => {
+                              const key = `${opt.id}:${crit.id}`;
+                              const text = opt.notes?.[crit.id] ?? "";
+                              const copy = SCORE_NOTE_STRINGS[lang];
+                              if (openNote === key) {
+                                return (
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    value={text}
+                                    placeholder={copy.placeholder}
+                                    onChange={(e) => setScoreNote(opt.id, crit.id, e.target.value)}
+                                    onBlur={() => setOpenNote(null)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") setOpenNote(null);
+                                    }}
+                                    className={`w-full ${field} border rounded-lg px-2.5 py-1 text-[11px]`}
+                                  />
+                                );
+                              }
+                              if (text.trim()) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenNote(key)}
+                                    aria-label={copy.viewNote}
+                                    title={copy.viewNote}
+                                    className="inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-white"
+                                  >
+                                    <MessageSquareQuote className="h-3.5 w-3.5" />
+                                  </button>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenNote(key)}
+                                  className="text-[11px] text-indigo-300 underline underline-offset-4 hover:text-white"
+                                >
+                                  {copy.addContext}
+                                </button>
+                              );
+                            })()}
+                          </div>
                         ))}
                       </div>
                     </div>

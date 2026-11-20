@@ -10,6 +10,8 @@ export type CalculatorReportOption = {
   criterionScores: { criterionId: string; score: number | null }[];
   finalScore: number;
   rank: number;
+  // Only the reasons the user typed, in criteria order. Never generated.
+  reasons: { criterionId: string; criterionName: string; score: number | null; text: string }[];
 };
 
 export type CalculatorReportData = {
@@ -24,7 +26,13 @@ export type CalculatorReportData = {
 };
 
 type InputCriterion = { id: string; name: string; weight: number; isInverted: boolean };
-type InputOption = { id: string; name: string; scores: Record<string, number | null>; score: number };
+type InputOption = {
+  id: string;
+  name: string;
+  scores: Record<string, number | null>;
+  notes?: Record<string, string>;
+  score: number;
+};
 
 export function buildCalculatorReport(input: {
   title: string;
@@ -48,6 +56,10 @@ export function buildCalculatorReport(input: {
     criterionScores: input.criteria.map((c) => ({ criterionId: c.id, score: o.scores[c.id] ?? null })),
     finalScore: o.score,
     rank: index + 1,
+    reasons: input.criteria.flatMap((c) => {
+      const text = (o.notes?.[c.id] ?? "").trim();
+      return text ? [{ criterionId: c.id, criterionName: c.name.trim(), score: o.scores[c.id] ?? null, text }] : [];
+    }),
   }));
   return {
     title: input.title.trim(),
