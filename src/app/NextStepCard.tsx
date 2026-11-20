@@ -22,7 +22,19 @@ export default function NextStepCard({ lang, step, context, onPrimary, onSeconda
   const primaryLabel = planOnly ? text.viewPlan : text.button;
 
   return (
-    <section className="rounded-2xl border border-violet-400/50 bg-[#0b0f2a]/80 p-5 space-y-3 shadow-[0_0_28px_rgba(139,92,246,0.3)]">
+    // The whole card acts like its main button. The inner buttons stop the click here so it runs once.
+    <section
+      role="button"
+      tabIndex={0}
+      onClick={onPrimary}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onPrimary();
+        }
+      }}
+      className="cursor-pointer rounded-2xl border border-violet-400/50 bg-[#0b0f2a]/80 p-5 space-y-3 shadow-[0_0_28px_rgba(139,92,246,0.3)] hover:border-violet-300/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+    >
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-violet-300">
         <Sparkles className="w-4 h-4" /> {text.heading}
       </p>
@@ -32,13 +44,22 @@ export default function NextStepCard({ lang, step, context, onPrimary, onSeconda
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <button
           type="button"
-          onClick={onPrimary}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrimary();
+          }}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:opacity-90"
         >
           {primaryLabel} <ArrowRight className="w-4 h-4" />
         </button>
         {onSecondary && secondaryLabel && (
-          <button type="button" onClick={onSecondary} className="text-xs text-indigo-200 underline underline-offset-4 hover:text-white">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSecondary();
+            }}
+            className="text-xs text-indigo-200 underline underline-offset-4 hover:text-white">
             {secondaryLabel}
           </button>
         )}

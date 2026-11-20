@@ -1,0 +1,223 @@
+import type { Lang } from "./i18n";
+
+// Labels for the Calculator's PDF report and its download button, in all six languages.
+export type CalcReportStrings = {
+  download: string;
+  generating: string;
+  error: string;
+  brand: string;
+  reportTitle: string;
+  notSaved: string;
+  saved: string;
+  notSavedExplain: string;
+  savedExplain: string;
+  reason: string;
+  reviewDate: string;
+  generated: string;
+  untitled: string;
+  unnamed: string;
+  criteriaHeading: string;
+  weight: string;
+  higher: string;
+  lower: string;
+  scoresHeading: string;
+  option: string;
+  overall: string;
+  rank: string;
+  rankingHeading: string;
+  topLabel: string;
+  topNote: string;
+  disclaimerNotSaved: string;
+  disclaimerSaved: string;
+  tagline: string;
+  pageOf: string;
+};
+
+export const CALC_REPORT_STRINGS: Record<Lang, CalcReportStrings> = {
+  en: {
+    download: "Download PDF Report",
+    generating: "Generating PDF...",
+    error: "We couldn't generate your PDF. Your Calculator results are still available. Please try again.",
+    brand: "DECISION LOOP",
+    reportTitle: "DECISION ANALYSIS REPORT",
+    notSaved: "NOT SAVED — DRAFT REPORT",
+    saved: "SAVED IN DECISION VAULT",
+    notSavedExplain: "This report was generated from an unsaved Decision Calculator session. Your analysis has not been saved to Decision Vault.",
+    savedExplain: "This report shows the Calculator results at the moment of download, for a decision saved in Decision Vault.",
+    reason: "Reason for this decision",
+    reviewDate: "Review date",
+    generated: "Generated",
+    untitled: "Untitled decision",
+    unnamed: "Unnamed",
+    criteriaHeading: "Evaluation Criteria & Weights",
+    weight: "Weight",
+    higher: "Higher is better.",
+    lower: "Lower is better.",
+    scoresHeading: "Option Scores & Comparison",
+    option: "Option",
+    overall: "Overall score",
+    rank: "Rank",
+    rankingHeading: "Decision Ranking",
+    topLabel: "Calculator's Top-Ranked Option",
+    topNote: "This is the Calculator's recommendation, not necessarily the user's final decision.",
+    disclaimerNotSaved: "This document represents the results of an unsaved Decision Loop Calculator session. It is provided for review and reference. The analysis has not been stored in Decision Vault.",
+    disclaimerSaved: "This document represents the results of a Decision Loop Calculator analysis. It is provided for review and reference.",
+    tagline: "Decision Loop — Think Clearly. Decide Confidently. Take Action.",
+    pageOf: "{page} / {total}",
+  },
+  fr: {
+    download: "Télécharger le rapport PDF",
+    generating: "Création du PDF...",
+    error: "Nous n'avons pas pu créer votre PDF. Vos résultats de la calculatrice sont toujours disponibles. Veuillez réessayer.",
+    brand: "DECISION LOOP",
+    reportTitle: "RAPPORT D'ANALYSE DE DÉCISION",
+    notSaved: "NON ENREGISTRÉ — BROUILLON",
+    saved: "ENREGISTRÉ DANS DECISION VAULT",
+    notSavedExplain: "Ce rapport a été créé à partir d'une session de la calculatrice non enregistrée. Votre analyse n'a pas été enregistrée dans Decision Vault.",
+    savedExplain: "Ce rapport montre les résultats de la calculatrice au moment du téléchargement, pour une décision enregistrée dans Decision Vault.",
+    reason: "Raison de cette décision",
+    reviewDate: "Date de révision",
+    generated: "Créé le",
+    untitled: "Décision sans titre",
+    unnamed: "Sans nom",
+    criteriaHeading: "Critères d'évaluation et poids",
+    weight: "Poids",
+    higher: "Plus la valeur est haute, mieux c'est.",
+    lower: "Plus la valeur est basse, mieux c'est.",
+    scoresHeading: "Notes des options et comparaison",
+    option: "Option",
+    overall: "Note globale",
+    rank: "Rang",
+    rankingHeading: "Classement de la décision",
+    topLabel: "Option la mieux classée par la calculatrice",
+    topNote: "Il s'agit de la recommandation de la calculatrice, pas forcément de la décision finale de l'utilisateur.",
+    disclaimerNotSaved: "Ce document présente les résultats d'une session de la calculatrice Decision Loop non enregistrée. Il est fourni pour examen et référence. L'analyse n'a pas été stockée dans Decision Vault.",
+    disclaimerSaved: "Ce document présente les résultats d'une analyse de la calculatrice Decision Loop. Il est fourni pour examen et référence.",
+    tagline: "Decision Loop — Pensez clairement. Décidez avec confiance. Passez à l'action.",
+    pageOf: "{page} / {total}",
+  },
+  es: {
+    download: "Descargar informe PDF",
+    generating: "Generando PDF...",
+    error: "No pudimos generar su PDF. Sus resultados de la calculadora siguen disponibles. Inténtelo de nuevo.",
+    brand: "DECISION LOOP",
+    reportTitle: "INFORME DE ANÁLISIS DE DECISIÓN",
+    notSaved: "NO GUARDADO — BORRADOR",
+    saved: "GUARDADO EN DECISION VAULT",
+    notSavedExplain: "Este informe se generó a partir de una sesión de la calculadora sin guardar. Su análisis no se ha guardado en Decision Vault.",
+    savedExplain: "Este informe muestra los resultados de la calculadora en el momento de la descarga, para una decisión guardada en Decision Vault.",
+    reason: "Motivo de esta decisión",
+    reviewDate: "Fecha de revisión",
+    generated: "Generado",
+    untitled: "Decisión sin título",
+    unnamed: "Sin nombre",
+    criteriaHeading: "Criterios de evaluación y pesos",
+    weight: "Peso",
+    higher: "Cuanto más alto, mejor.",
+    lower: "Cuanto más bajo, mejor.",
+    scoresHeading: "Puntuaciones de opciones y comparación",
+    option: "Opción",
+    overall: "Puntuación total",
+    rank: "Puesto",
+    rankingHeading: "Clasificación de la decisión",
+    topLabel: "Opción mejor clasificada de la calculadora",
+    topNote: "Esta es la recomendación de la calculadora, no necesariamente la decisión final del usuario.",
+    disclaimerNotSaved: "Este documento presenta los resultados de una sesión de la calculadora de Decision Loop sin guardar. Se entrega para revisión y referencia. El análisis no se ha almacenado en Decision Vault.",
+    disclaimerSaved: "Este documento presenta los resultados de un análisis de la calculadora de Decision Loop. Se entrega para revisión y referencia.",
+    tagline: "Decision Loop — Piense con claridad. Decida con confianza. Actúe.",
+    pageOf: "{page} / {total}",
+  },
+  pt: {
+    download: "Baixar relatório PDF",
+    generating: "Gerando PDF...",
+    error: "Não foi possível criar seu PDF. Seus resultados da calculadora continuam disponíveis. Tente novamente.",
+    brand: "DECISION LOOP",
+    reportTitle: "RELATÓRIO DE ANÁLISE DE DECISÃO",
+    notSaved: "NÃO SALVO — RASCUNHO",
+    saved: "SALVO NO DECISION VAULT",
+    notSavedExplain: "Este relatório foi gerado a partir de uma sessão da calculadora não salva. Sua análise não foi salva no Decision Vault.",
+    savedExplain: "Este relatório mostra os resultados da calculadora no momento do download, para uma decisão salva no Decision Vault.",
+    reason: "Motivo desta decisão",
+    reviewDate: "Data de revisão",
+    generated: "Gerado em",
+    untitled: "Decisão sem título",
+    unnamed: "Sem nome",
+    criteriaHeading: "Critérios de avaliação e pesos",
+    weight: "Peso",
+    higher: "Quanto maior, melhor.",
+    lower: "Quanto menor, melhor.",
+    scoresHeading: "Notas das opções e comparação",
+    option: "Opção",
+    overall: "Nota geral",
+    rank: "Posição",
+    rankingHeading: "Classificação da decisão",
+    topLabel: "Opção melhor classificada pela calculadora",
+    topNote: "Esta é a recomendação da calculadora, não necessariamente a decisão final do usuário.",
+    disclaimerNotSaved: "Este documento apresenta os resultados de uma sessão da calculadora do Decision Loop não salva. Ele é fornecido para revisão e referência. A análise não foi armazenada no Decision Vault.",
+    disclaimerSaved: "Este documento apresenta os resultados de uma análise da calculadora do Decision Loop. Ele é fornecido para revisão e referência.",
+    tagline: "Decision Loop — Pense com clareza. Decida com confiança. Aja.",
+    pageOf: "{page} / {total}",
+  },
+  sw: {
+    download: "Pakua ripoti ya PDF",
+    generating: "Inatengeneza PDF...",
+    error: "Hatukuweza kutengeneza PDF yako. Matokeo yako ya kikokotoo bado yapo. Tafadhali jaribu tena.",
+    brand: "DECISION LOOP",
+    reportTitle: "RIPOTI YA UCHAMBUZI WA UAMUZI",
+    notSaved: "HAIJAHIFADHIWA — RASIMU",
+    saved: "IMEHIFADHIWA KWENYE DECISION VAULT",
+    notSavedExplain: "Ripoti hii ilitengenezwa kutoka kwa kikao cha kikokotoo ambacho hakijahifadhiwa. Uchambuzi wako haujahifadhiwa kwenye Decision Vault.",
+    savedExplain: "Ripoti hii inaonyesha matokeo ya kikokotoo wakati wa kupakua, kwa uamuzi uliohifadhiwa kwenye Decision Vault.",
+    reason: "Sababu ya uamuzi huu",
+    reviewDate: "Tarehe ya mapitio",
+    generated: "Imetengenezwa",
+    untitled: "Uamuzi usio na jina",
+    unnamed: "Bila jina",
+    criteriaHeading: "Vigezo vya tathmini na uzito",
+    weight: "Uzito",
+    higher: "Kubwa zaidi ni bora.",
+    lower: "Ndogo zaidi ni bora.",
+    scoresHeading: "Alama za chaguo na ulinganisho",
+    option: "Chaguo",
+    overall: "Alama ya jumla",
+    rank: "Nafasi",
+    rankingHeading: "Mpangilio wa uamuzi",
+    topLabel: "Chaguo lililo juu zaidi kwenye kikokotoo",
+    topNote: "Hili ni pendekezo la kikokotoo, si lazima uamuzi wa mwisho wa mtumiaji.",
+    disclaimerNotSaved: "Hati hii inawasilisha matokeo ya kikao cha kikokotoo cha Decision Loop ambacho hakijahifadhiwa. Imetolewa kwa ajili ya mapitio na marejeo. Uchambuzi haujahifadhiwa kwenye Decision Vault.",
+    disclaimerSaved: "Hati hii inawasilisha matokeo ya uchambuzi wa kikokotoo cha Decision Loop. Imetolewa kwa ajili ya mapitio na marejeo.",
+    tagline: "Decision Loop — Fikiri kwa uwazi. Amua kwa ujasiri. Chukua hatua.",
+    pageOf: "{page} / {total}",
+  },
+  zh: {
+    download: "下载 PDF 报告",
+    generating: "正在生成 PDF...",
+    error: "无法生成您的 PDF。您的计算器结果仍然保留，请重试。",
+    brand: "DECISION LOOP",
+    reportTitle: "决策分析报告",
+    notSaved: "未保存 — 草稿报告",
+    saved: "已保存至决策库",
+    notSavedExplain: "此报告由未保存的决策计算器会话生成。您的分析尚未保存到决策库（Decision Vault）。",
+    savedExplain: "此报告显示下载时的计算器结果，对应已保存到决策库的决策。",
+    reason: "做出此决策的理由",
+    reviewDate: "复盘日期",
+    generated: "生成于",
+    untitled: "未命名决策",
+    unnamed: "未命名",
+    criteriaHeading: "评估标准与权重",
+    weight: "权重",
+    higher: "数值越高越好。",
+    lower: "数值越低越好。",
+    scoresHeading: "选项评分与对比",
+    option: "选项",
+    overall: "总分",
+    rank: "排名",
+    rankingHeading: "决策排名",
+    topLabel: "计算器排名第一的选项",
+    topNote: "这是计算器的推荐，不一定是用户的最终决定。",
+    disclaimerNotSaved: "本文件展示未保存的 Decision Loop 计算器会话结果，仅供审阅和参考。该分析尚未存入决策库（Decision Vault）。",
+    disclaimerSaved: "本文件展示 Decision Loop 计算器分析的结果，仅供审阅和参考。",
+    tagline: "Decision Loop — 清晰思考，自信决策，立即行动。",
+    pageOf: "{page} / {total}",
+  },
+};
