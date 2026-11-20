@@ -24,6 +24,9 @@ import { HOME_STRINGS } from "@/lib/homeStrings";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { buildHomeMessage } from "@/lib/homeMessages";
 import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep";
+import { HELP_STRINGS } from "@/lib/helpStrings";
+import HelpPopup from "./HelpPopup";
+import { rankOptions } from "@/lib/reportData";
 import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 import CalculatorPDFDownload from "./CalculatorPDFDownload";
 import { buildCalculatorReport } from "@/lib/calculatorReport";
@@ -394,8 +397,8 @@ export default function App() {
   );
   // The single most urgent next step across the user's projects.
   const homeNextStep = useMemo(
-    () => (user ? nextStepForHome(plans, planRows, today) : null),
-    [user, plans, planRows, today],
+    () => (user ? nextStepForHome(plans, planRows, today, savedMatrices) : null),
+    [user, plans, planRows, today, savedMatrices],
   );
   const completedPlans = useMemo(
     () =>
@@ -566,6 +569,16 @@ export default function App() {
     setViewState("plan");
   };
   const openNextStep = (step: NextStep, focused: boolean) => {
+    if (step.action === "create_plan" && step.decisionId) {
+      const decision = savedMatrices.find((m) => m.id === step.decisionId);
+      const top = decision ? rankOptions(decision.criteria ?? [], decision.options ?? [])[0] : undefined;
+      return openActionPlan({
+        decisionId: step.decisionId,
+        title: decision?.title || t.decisionAnalysis,
+        selectedOption: top?.name ?? "",
+        reason: decision?.reason ?? "",
+      });
+    }
     setPlanSeed(null);
     setPlanFocus({ projectId: step.projectId, action: focused ? step.action : null });
     setViewState("plan");
@@ -1123,7 +1136,10 @@ export default function App() {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-end justify-between gap-2">
                     <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.criteria}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.criteria}</h3>
+                        <HelpPopup openLabel={HELP_STRINGS[lang].open} closeLabel={HELP_STRINGS[lang].close} help={HELP_STRINGS[lang].criteria} />
+                      </div>
                       <p className={`text-[11px] ${totalWeight === 0 ? "text-rose-400" : "text-slate-400"}`}>
                         {fmt(t.totalWeight, { total: totalWeight })}
                       </p>
@@ -1189,7 +1205,10 @@ export default function App() {
                 {/* Options and scores */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.optionsAndScores}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">{t.optionsAndScores}</h3>
+                      <HelpPopup openLabel={HELP_STRINGS[lang].open} closeLabel={HELP_STRINGS[lang].close} help={HELP_STRINGS[lang].options} />
+                    </div>
                     <button
                       onClick={handleAddOption}
                       className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-indigo-300"

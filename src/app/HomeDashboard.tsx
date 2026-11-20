@@ -83,7 +83,11 @@ export default function HomeDashboard({
           step={nextStep}
           context="home"
           onPrimary={() => onOpenNextStep(nextStep, !PLAN_ONLY_ACTIONS.includes(nextStep.action))}
-          onSecondary={PLAN_ONLY_ACTIONS.includes(nextStep.action) ? undefined : () => onOpenNextStep(nextStep, false)}
+          onSecondary={
+            PLAN_ONLY_ACTIONS.includes(nextStep.action) || nextStep.action === "create_plan"
+              ? undefined
+              : () => onOpenNextStep(nextStep, false)
+          }
           secondaryLabel={nextStepText(lang, nextStep).viewPlan}
         />
       </div>

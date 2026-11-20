@@ -17,6 +17,7 @@ const en: Copy = {
     continue: { title: "Keep moving forward", body: "{count} task(s) are still open. Continue with the next one.", button: "Show open tasks" },
     complete: { title: "All tasks are done", body: "Every task is finished. Complete the plan and record the outcome.", button: "Complete plan" },
     archive: { title: "Review and archive", body: "This plan is complete. Review the outcome and archive it when you are ready.", button: "Archive plan" },
+    create_plan: { title: "Ready to turn it into an Action Plan?", body: "Your decision is saved but has no plan yet. Add the steps, owners and dates that carry it out.", button: "Create Action Plan" },
   },
 };
 
@@ -33,6 +34,7 @@ const fr: Copy = {
     continue: { title: "Continuez d'avancer", body: "{count} tâche(s) restent ouvertes. Poursuivez avec la suivante.", button: "Afficher les tâches ouvertes" },
     complete: { title: "Toutes les tâches sont terminées", body: "Chaque tâche est finie. Terminez le plan et notez le résultat.", button: "Terminer le plan" },
     archive: { title: "Revoir et archiver", body: "Ce plan est terminé. Revoyez le résultat et archivez-le quand vous le souhaitez.", button: "Archiver le plan" },
+    create_plan: { title: "Prêt à en faire un plan d'action ?", body: "Votre décision est enregistrée mais n'a pas encore de plan. Ajoutez les étapes, responsables et dates pour la mettre en œuvre.", button: "Créer un plan d'action" },
   },
 };
 
@@ -49,6 +51,7 @@ const es: Copy = {
     continue: { title: "Sigue avanzando", body: "{count} tarea(s) siguen abiertas. Continúa con la siguiente.", button: "Mostrar tareas abiertas" },
     complete: { title: "Todas las tareas están hechas", body: "Cada tarea está terminada. Completa el plan y registra el resultado.", button: "Completar el plan" },
     archive: { title: "Revisar y archivar", body: "Este plan está terminado. Revisa el resultado y archívalo cuando quieras.", button: "Archivar el plan" },
+    create_plan: { title: "¿Listo para convertirlo en un plan de acción?", body: "Tu decisión está guardada, pero aún no tiene plan. Añade los pasos, responsables y fechas para llevarla a cabo.", button: "Crear plan de acción" },
   },
 };
 
@@ -65,6 +68,7 @@ const pt: Copy = {
     continue: { title: "Continue avançando", body: "{count} tarefa(s) ainda estão abertas. Siga para a próxima.", button: "Mostrar tarefas abertas" },
     complete: { title: "Todas as tarefas foram concluídas", body: "Todas as tarefas estão prontas. Conclua o plano e registre o resultado.", button: "Concluir o plano" },
     archive: { title: "Revisar e arquivar", body: "Este plano está concluído. Revise o resultado e arquive quando quiser.", button: "Arquivar o plano" },
+    create_plan: { title: "Pronto para transformá-la em um plano de ação?", body: "Sua decisão está salva, mas ainda não tem plano. Adicione as etapas, responsáveis e prazos para colocá-la em prática.", button: "Criar plano de ação" },
   },
 };
 
@@ -81,6 +85,7 @@ const sw: Copy = {
     continue: { title: "Endelea mbele", body: "Kazi {count} bado zinasubiri. Endelea na inayofuata.", button: "Onyesha kazi zilizobaki" },
     complete: { title: "Kazi zote zimekamilika", body: "Kila kazi imekamilika. Maliza mpango na uandike matokeo.", button: "Maliza mpango" },
     archive: { title: "Kagua na uhifadhi", body: "Mpango huu umekamilika. Kagua matokeo na uuhifadhi ukiwa tayari.", button: "Hifadhi mpango" },
+    create_plan: { title: "Uko tayari kuigeuza kuwa mpango wa hatua?", body: "Uamuzi wako umehifadhiwa lakini bado hauna mpango. Ongeza hatua, wahusika na tarehe za kuutekeleza.", button: "Unda mpango wa hatua" },
   },
 };
 
@@ -97,6 +102,7 @@ const zh: Copy = {
     continue: { title: "继续前进", body: "还有 {count} 个任务未完成。从下一个开始。", button: "显示未完成的任务" },
     complete: { title: "所有任务已完成", body: "每个任务都已完成。完成计划并记录结果。", button: "完成计划" },
     archive: { title: "回顾并归档", body: "这个计划已完成。回顾结果，准备好后再归档。", button: "归档计划" },
+    create_plan: { title: "准备好把它变成行动计划了吗？", body: "你的决定已保存，但还没有计划。添加执行它所需的步骤、负责人和日期。", button: "创建行动计划" },
   },
 };
 
