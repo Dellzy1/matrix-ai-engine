@@ -852,8 +852,13 @@ export default function App() {
       <header className={`print:hidden border-b ${isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-200 bg-white/50"} backdrop-blur-md px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 max-w-full`}>
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-2">
-            <img src="/logo-icon.png" alt={t.logoAlt} className="h-9 w-9 object-contain" />
-            <h1 className="font-bold text-xl text-slate-100">Decision Loop</h1>
+            {/* On the light theme the logo gets a dark tile so it stays visible on the light background. */}
+            <img
+              src="/logo-icon.png"
+              alt={t.logoAlt}
+              className={`h-9 w-9 object-contain ${isDark ? "" : "rounded-lg bg-slate-900 p-0.5"}`}
+            />
+            <h1 className={`font-bold text-xl ${isDark ? "text-slate-100" : "text-slate-900"}`}>Decision Loop</h1>
           </a>
           <span className="hidden sm:inline text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
             {t.badgeProduction}
