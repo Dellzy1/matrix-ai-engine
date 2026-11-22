@@ -4,6 +4,7 @@ import { APP_NAME } from "@/lib/appConfig";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { explain } from "@/lib/explainRanking";
+import DecisionInsight from "./DecisionInsight";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
@@ -187,19 +188,12 @@ function validateDecision(title: string, criteria: Criterion[], options: Option[
 }
 
 // Rule-based checks. These are not AI, and the UI labels them that way.
-function automaticChecks(
-  criteria: Criterion[],
-  ranked: Array<{ name: string; score: number }>,
-  t: T
-): string[] {
+function automaticChecks(criteria: Criterion[], t: T): string[] {
   const notes: string[] = [];
   const total = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
   const heaviest = [...criteria].sort((a, b) => b.weight - a.weight)[0];
   if (heaviest && total > 0 && heaviest.weight / total > 0.5) {
     notes.push(fmt(t.chkHeavy, { name: heaviest.name }));
-  }
-  if (ranked.length > 1 && ranked[0].score - ranked[1].score <= 3) {
-    notes.push(t.chkClose);
   }
   if (criteria.length < 3) {
     notes.push(t.chkFewCriteria);
@@ -317,7 +311,7 @@ export default function App() {
 
   // Derived values
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
-  const checks = useMemo(() => automaticChecks(criteria, ranked, t), [criteria, ranked, t]);
+  const checks = useMemo(() => automaticChecks(criteria, t), [criteria, t]);
   // The PDF data is read from what the Calculator shows now. Downloading never changes it.
   const calcReport = useMemo(
     () =>
@@ -341,7 +335,6 @@ export default function App() {
       return v == null || v < 1 || v > 10;
     })
   );
-  const weakResult = ranked.length > 0 && ranked[0].score < 60;
   const summary = useMemo(() => {
     const completed = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() !== "");
     const awaiting = savedMatrices.filter((m) => (m.actual_outcome ?? "").trim() === "");
@@ -1507,29 +1500,10 @@ export default function App() {
                   <span className="break-words">{reason}</span>
                 </div>
               )}
-              {weakResult && (
-                <div className="p-3 rounded-xl border border-amber-700 bg-amber-950/40 text-amber-200 text-xs">
-                  {fmt(t.weakResult, { score: ranked[0].score })}
-                </div>
-              )}
               <p className="text-[11px] text-slate-400">
                 {fmt(t.overallFormula, { score: ranked[0]?.score ?? 0 })}
               </p>
-              <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold text-indigo-300">
-                  <Brain className="w-4 h-4 text-indigo-400" /> {t.automaticCheck}
-                </div>
-                {ranked[0] && (
-                  <p>
-                    {fmt(t.highestScore, { name: ranked[0].name, score: ranked[0].score })}
-                  </p>
-                )}
-                <ul className="list-disc list-inside text-slate-400 text-[11px] space-y-1">
-                  {checks.map((note, i) => (
-                    <li key={i}>{note}</li>
-                  ))}
-                </ul>
-              </div>
+              <DecisionInsight lang={lang} criteria={criteria} ranked={ranked} surface={surface} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ranked.map((opt, idx) => (
@@ -1596,6 +1570,22 @@ export default function App() {
                     })()}
                   </div>
                 ))}
+              </div>
+
+              <div className="p-4 rounded-xl border border-indigo-800/50 bg-indigo-950/30 text-indigo-200 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-indigo-300">
+                  <Brain className="w-4 h-4 text-indigo-400" /> {t.automaticCheck}
+                </div>
+                {ranked[0] && (
+                  <p>
+                    {fmt(t.highestScore, { name: ranked[0].name, score: ranked[0].score })}
+                  </p>
+                )}
+                <ul className="list-disc list-inside text-slate-400 text-[11px] space-y-1">
+                  {checks.map((note, i) => (
+                    <li key={i}>{note}</li>
+                  ))}
+                </ul>
               </div>
 
               <div className={`p-6 rounded-2xl border space-y-4 ${surface}`}>
