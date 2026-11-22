@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { explain } from "@/lib/explainRanking";
 import DecisionInsight from "./DecisionInsight";
+import SensitivityPanel from "./SensitivityPanel";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
@@ -1587,6 +1588,19 @@ export default function App() {
                   ))}
                 </ul>
               </div>
+
+              <SensitivityPanel
+                lang={lang}
+                criteria={criteria}
+                original={ranked}
+                rankFor={(weights) =>
+                  scoreOptions(
+                    criteria.map((c) => ({ ...c, weight: weights[c.id] ?? c.weight })),
+                    options,
+                  )
+                }
+                surface={surface}
+              />
 
               <div className={`p-6 rounded-2xl border space-y-4 ${surface}`}>
                 <h3 className="text-sm font-bold flex items-center gap-2 text-indigo-400">
