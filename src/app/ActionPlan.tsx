@@ -20,6 +20,7 @@ import {
 } from "@/lib/projects";
 import ProjectDetail from "./ProjectDetail";
 import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
+import WarningBox from "./WarningBox";
 
 // What Decision Loop passes in from the Calculator, after the user chooses Create Action Plan.
 export type PlanSeed = {
@@ -282,7 +283,7 @@ export default function ActionPlan({ lang, supabase, userId, seed, focus, onSign
             </div>
           </div>
 
-          {error && <p className="text-sm text-rose-300">{error}</p>}
+          {error && <WarningBox lang={lang} message={error} className="text-sm" />}
           {loading && <p className="text-sm text-slate-400">{t.loading}</p>}
 
           {!loading && visible.length === 0 && (
@@ -509,7 +510,7 @@ function NewProjectForm({
           </div>
         </fieldset>
 
-        {formError && <p className="text-sm text-rose-300">{formError}</p>}
+        {formError && <WarningBox lang={lang} message={formError} className="text-sm" />}
 
         <div className="flex flex-wrap gap-3 pt-2">
           <button type="submit" disabled={saving} className={primaryBtn}>

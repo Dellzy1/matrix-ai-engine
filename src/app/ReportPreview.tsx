@@ -21,6 +21,7 @@ import { REPORT_CHOOSER, REPORT_STRINGS, REPORT_UI, fill } from "@/lib/reportStr
 import { challengeText } from "@/lib/challengeStrings";
 import { todayKey } from "@/lib/planDates";
 import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
+import WarningBox from "./WarningBox";
 
 type Props = {
   lang: Lang;
@@ -137,7 +138,7 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
         </div>
 
         {!full && !error && <p className="text-sm text-slate-300">{ui.loading}</p>}
-        {error && <p className="text-sm text-rose-300">{error}</p>}
+        {error && <WarningBox lang={lang} message={error} className="text-sm" />}
 
         {full && shaped && checklist && (
           <>
@@ -161,7 +162,7 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
                     );
                   })}
                 </div>
-                {!linked && <p className="text-xs text-amber-300">{ch.typeNeedsDecision}</p>}
+                {!linked && <WarningBox lang={lang} tone="amber" message={ch.typeNeedsDecision} className="text-xs" />}
               </div>
 
               <div className="space-y-2">
@@ -207,9 +208,9 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
             </section>
 
             <p className="text-xs text-slate-400">{ui.note}</p>
-            {!linked && <p className="text-xs text-amber-300">{ui.noDecision}</p>}
+            {!linked && <WarningBox lang={lang} tone="amber" message={ui.noDecision} className="text-xs" />}
 
-            {unfinished.length > 0 && <p className="text-sm text-amber-300">{placeholderMessage(lang, unfinished)}</p>}
+            {unfinished.length > 0 && <WarningBox lang={lang} tone="amber" message={placeholderMessage(lang, unfinished)} className="text-sm" />}
             <button
               type="button"
               onClick={download}
@@ -218,7 +219,7 @@ export default function ReportPreview({ lang, supabase, projectId, onClose }: Pr
             >
               <Download className="w-4 h-4" /> {ui.download}
             </button>
-            {downloadError && <p className="text-sm text-rose-300">{downloadError}</p>}
+            {downloadError && <WarningBox lang={lang} message={downloadError} className="text-sm" />}
 
             <article className={`${card} p-5 space-y-5`}>
               <div>

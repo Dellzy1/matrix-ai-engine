@@ -13,6 +13,7 @@ import { InfoButton } from "./FeatureInfo";
 import { CHECKLISTS, type ChecklistCategory } from "@/lib/checklists";
 import { suggestCriteria, type Suggestion } from "@/lib/criteriaSuggestions";
 import ExportMenu from "./ExportMenu";
+import WarningBox from "./WarningBox";
 import HomeDashboard from "./HomeDashboard";
 import dynamic from "next/dynamic";
 import type { PlanSeed } from "./ActionPlan";
@@ -409,6 +410,25 @@ export default function App() {
     () => (user ? nextStepsForHome(plans, planRows, today, savedMatrices) : { primary: null, alternatives: [] }),
     [user, plans, planRows, today, savedMatrices],
   );
+  // After any button press, bring a warning into view if it is off-screen. This works on every screen.
+  useEffect(() => {
+    const onButtonPress = () => {
+      // Give the screen time to show the warning first.
+      setTimeout(() => {
+        const alerts = Array.from(document.querySelectorAll<HTMLElement>('[role="alert"]'));
+        const hidden = alerts.find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top < 0 || r.bottom > window.innerHeight;
+        });
+        hidden?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    };
+    const onClick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement | null)?.closest("button")) onButtonPress();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
   // The most important open challenge across active plans. Shown on the home screen, below the next step.
   const [homeChallenges, setHomeChallenges] = useState<Finding[]>([]);
   useEffect(() => {
@@ -1368,9 +1388,7 @@ export default function App() {
                   ))}
                 </div>
                 {missingScores && (
-                  <p className="text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded-xl border border-rose-800">
-                    {t.scoresEmpty}
-                  </p>
+                  <WarningBox lang={lang} message={t.scoresEmpty} className="text-xs" />
                 )}
                 <button
                   onClick={handleCalculate}
@@ -1694,19 +1712,12 @@ export default function App() {
       {showAuthModal && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
-            {notice && (
-              <div
-                className={`print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 ${
-                  notice.type === "error"
-                    ? "bg-rose-950/40 border-rose-800 text-rose-300"
-                    : "bg-emerald-950/40 border-emerald-800 text-emerald-300"
-                }`}
-              >
-                {notice.type === "error" ? (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                )}
+            {notice && notice.type === "error" && (
+              <WarningBox lang={lang} message={notice.text} className="print:hidden" />
+            )}
+            {notice && notice.type !== "error" && (
+              <div className="print:hidden p-3 rounded-xl border text-xs flex items-start gap-2 bg-emerald-950/40 border-emerald-800 text-emerald-300">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>{notice.text}</span>
               </div>
             )}
@@ -1735,7 +1746,7 @@ export default function App() {
             </div>
 
             {authError && (
-              <p className="text-xs text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-800">{authError}</p>
+              <WarningBox lang={lang} message={authError} className="text-xs" />
             )}
             {authSuccessMsg && (
               <div className="text-xs text-emerald-300 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800 flex items-start gap-1.5">

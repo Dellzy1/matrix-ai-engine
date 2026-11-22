@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import WarningBox from "../WarningBox";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
@@ -105,7 +106,7 @@ export default function ResetPasswordPage() {
             </div>
 
             {error && (
-              <p className="text-xs text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-800">{error}</p>
+              <WarningBox lang="en" message={error} className="text-xs" />
             )}
 
             <div className="relative">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import type { Finding } from "@/lib/intelligence";
 import { INTEL_STRINGS, findingSentence } from "@/lib/intelligenceStrings";
@@ -18,6 +18,9 @@ type Props = {
 export default function IntelligencePanel({ lang, findings, onRespond }: Props) {
   const copy = INTEL_STRINGS[lang];
   const [explaining, setExplaining] = useState<string | null>(null);
+  // Each challenge rolls up to its issue, and rolls down to show the actions.
+  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({});
+  const toggle = (key: string) => setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   const [note, setNote] = useState("");
   if (findings.length === 0) return null;
 
@@ -33,16 +36,26 @@ export default function IntelligencePanel({ lang, findings, onRespond }: Props) 
           const muted = f.status === "explained";
           return (
             <li key={f.key} className="space-y-2">
-              <p className={`text-[11px] font-semibold uppercase tracking-wide ${f.level === "confirmed" ? "text-rose-300" : "text-amber-300"}`}>
-                {f.level === "confirmed" ? copy.confirmed : copy.potential}
-                {f.status === "accepted" && <span className="ml-2 text-emerald-300">· {copy.accepted}</span>}
-                {f.status === "explained" && (
-                  <span className="ml-2 text-slate-400">· {f.response === "rejected" ? copy.discussed : copy.explained}</span>
-                )}
-              </p>
-              <p className={`text-sm ${muted ? "text-slate-400" : "text-slate-200"}`}>{findingSentence(lang, f)}</p>
+              <button
+                type="button"
+                onClick={() => toggle(f.key)}
+                aria-expanded={!!openKeys[f.key]}
+                className="flex w-full items-start justify-between gap-3 text-left"
+              >
+                <span className="space-y-1">
+                  <span className={`block text-[11px] font-semibold uppercase tracking-wide ${f.level === "confirmed" ? "text-rose-300" : "text-amber-300"}`}>
+                    {f.level === "confirmed" ? copy.confirmed : copy.potential}
+                    {f.status === "accepted" && <span className="ml-2 text-emerald-300">· {copy.accepted}</span>}
+                    {f.status === "explained" && (
+                      <span className="ml-2 text-slate-400">· {f.response === "rejected" ? copy.discussed : copy.explained}</span>
+                    )}
+                  </span>
+                  <span className={`block text-sm ${muted ? "text-slate-400" : "text-slate-200"}`}>{findingSentence(lang, f)}</span>
+                </span>
+                {openKeys[f.key] ? <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-amber-300" /> : <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-amber-300" />}
+              </button>
 
-              {explaining === f.key ? (
+              {!openKeys[f.key] ? null : explaining === f.key ? (
                 <div className="flex flex-wrap gap-2">
                   <input
                     autoFocus

@@ -5,6 +5,7 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import { Download, Loader2 } from "lucide-react";
 import type { Lang } from "@/lib/i18n";
 import type { CalculatorReportData } from "@/lib/calculatorReport";
+import WarningBox from "./WarningBox";
 import { CALC_REPORT_STRINGS } from "@/lib/calculatorReportStrings";
 import { todayKey } from "@/lib/planDates";
 import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
@@ -75,7 +76,7 @@ export default function CalculatorPDFDownload({ lang, report }: Props) {
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
         {busy ? c.generating : c.download}
       </button>
-      {error && <p className="max-w-xs text-xs text-rose-300">{error}</p>}
+      {error && <WarningBox lang={lang} message={error} className="max-w-xs text-xs" />}
     </div>
   );
 }

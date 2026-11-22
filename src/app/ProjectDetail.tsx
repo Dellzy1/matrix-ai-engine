@@ -13,6 +13,7 @@ import NextStepCard from "./NextStepCard";
 import ReportPreview from "./ReportPreview";
 import { REPORT_UI } from "@/lib/reportStrings";
 import IntelligencePanel from "./IntelligencePanel";
+import WarningBox from "./WarningBox";
 import AssumptionsPanel from "./AssumptionsPanel";
 import { loadChallengeInputs, findingsFor, respondToFinding, addAssumption, setAssumptionStatus, addEvidence } from "@/lib/intelligenceData";
 import type { ChallengeInput } from "@/lib/intelligence";
@@ -480,7 +481,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
         <ReportPreview lang={lang} supabase={supabase} projectId={projectId} onClose={() => setShowReport(false)} />
       )}
 
-      {error && <p className="text-sm text-rose-300">{error}</p>}
+      {error && <WarningBox lang={lang} message={error} className="text-sm" />}
 
       {/* Overview */}
       <section className={`${panel} p-5 space-y-4`}>
@@ -974,7 +975,7 @@ function TaskForm({
           ))}
         </select>
       </div>
-      {error && <p className="text-xs text-rose-300">{error}</p>}
+      {error && <WarningBox lang={lang} message={error} className="text-xs" />}
       <div className="flex gap-2">
         <button type="button" onClick={submit} disabled={saving} className={primaryBtn}>{saving ? t.saving : t.save}</button>
         <button type="button" onClick={onCancel} className={ghostBtn}>{t.cancel}</button>
