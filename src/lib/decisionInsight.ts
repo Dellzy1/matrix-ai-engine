@@ -1,4 +1,5 @@
 import { contributions, explain, type Criterion, type Option } from "./explainRanking";
+import { clampRating } from "./scoring";
 
 // The thresholds agreed for Decision Loop. Scores are the 0–100 overall scores on the results screen.
 // No Strong Option is checked first, so a low top score is never called a clear winner.
@@ -72,4 +73,43 @@ export function winnerContrast(criteria: Criterion[], winner: Option, runnerUp?:
     gain: gains[0] ?? null,
     loss: losses[0] ?? null,
   };
+}
+
+// The total weighted points an option earns, and the most they could earn.
+export function pointsTotals(criteria: Criterion[], option: Option): { earned: number; max: number } {
+  const items = contributions(criteria, option);
+  return {
+    earned: items.reduce((sum, i) => sum + i.points, 0),
+    max: items.reduce((sum, i) => sum + i.maxPoints, 0),
+  };
+}
+
+// The smallest single rating change on one criterion that would bring this option level with the target
+// (on weighted points, other ratings unchanged). Returns null when no single change is enough.
+// Ratings stay between 1 and 10. Raw ratings move in the direction that helps the option.
+export function singleChangeToLevel(
+  criteria: Criterion[],
+  option: Option,
+  target: Option,
+): { criterionName: string; from: number; to: number } | null {
+  const earned = pointsTotals(criteria, option).earned;
+  const goal = pointsTotals(criteria, target).earned;
+  const gap = goal - earned;
+  if (gap <= 0) return null;
+  let best: { criterionName: string; from: number; to: number; steps: number } | null = null;
+  for (const c of criteria) {
+    const weight = c.weight || 0;
+    if (weight <= 0) continue;
+    const raw = clampRating(option.scores[c.id]);
+    // The most this criterion can still give is 10 adjusted points, so the rating can move this many steps.
+    const adjusted = c.isInverted ? 11 - raw : raw;
+    const room = 10 - adjusted;
+    const steps = Math.ceil(gap / weight);
+    if (steps > room) continue;
+    if (!best || steps < best.steps) {
+      const to = c.isInverted ? raw - steps : raw + steps;
+      best = { criterionName: c.name, from: raw, to, steps };
+    }
+  }
+  return best ? { criterionName: best.criterionName, from: best.from, to: best.to } : null;
 }

@@ -7,6 +7,7 @@ import { explain } from "@/lib/explainRanking";
 import DecisionInsight from "./DecisionInsight";
 import { rankByScore } from "@/lib/scoring";
 import SensitivityPanel from "./SensitivityPanel";
+import RunnerUpNotes from "./RunnerUpNotes";
 import StabilityCard from "./StabilityCard";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
@@ -1530,6 +1531,10 @@ export default function App() {
                       ))}
                     </ul>
                     {(() => {
+                      // Second place gets its own notes, compared with the winner.
+                      if (idx === 1 && ranked[0]) {
+                        return <RunnerUpNotes lang={lang} criteria={criteria} option={opt} winner={ranked[0]} />;
+                      }
                       const runnerUp = idx === 0 ? ranked[1] : undefined;
                       const ex = explain(criteria, opt, runnerUp);
                       return (

@@ -10,6 +10,8 @@ import {
   type Classification,
 } from "@/lib/decisionInsight";
 import { INSIGHT_STRINGS } from "@/lib/insightStrings";
+import { OPTION_NOTES_STRINGS } from "@/lib/optionNotesStrings";
+import { pointsTotals } from "@/lib/decisionInsight";
 
 type Props = {
   lang: Lang;
@@ -37,6 +39,8 @@ export default function DecisionInsight({ lang, criteria, ranked, surface }: Pro
   const runnerUp = ranked[1];
   const contrast = winnerContrast(criteria, winner, runnerUp);
   const rows = comparisonRows(criteria, ranked);
+  const n = OPTION_NOTES_STRINGS[lang];
+  const totalMax = rows.reduce((sum, r) => sum + r.max, 0);
 
   const text =
     insight.classification === "no_strong_option"
@@ -59,6 +63,7 @@ export default function DecisionInsight({ lang, criteria, ranked, surface }: Pro
           </span>
         </div>
         <p className="text-xs">{text}</p>
+        <p className="text-xs opacity-90">{n.meaning[insight.classification]}</p>
         {contrast?.gain && (
           <p className="text-xs text-emerald-300">
             {fmt(s.leads, { name: contrast.gain.name, n: Math.round(contrast.gain.diff), other: runnerUp.name })}
@@ -108,7 +113,16 @@ export default function DecisionInsight({ lang, criteria, ranked, surface }: Pro
                 </tr>
               ))}
               <tr className="border-t border-slate-600 font-semibold">
-                <td className="py-1.5 pr-2 text-slate-200">{s.total}</td>
+                <td className="py-1.5 pr-2 text-slate-200">{n.totalPoints}</td>
+                <td className="py-1.5 px-2 text-right text-slate-400 whitespace-nowrap">{Math.round(totalMax)}</td>
+                {ranked.map((o) => (
+                  <td key={o.id} className="py-1.5 px-2 text-right text-slate-100 whitespace-nowrap">
+                    {Math.round(pointsTotals(criteria, o).earned)}
+                  </td>
+                ))}
+              </tr>
+              <tr className="font-bold">
+                <td className="py-1.5 pr-2 text-slate-100">{n.finalScore}</td>
                 <td className="py-1.5 px-2 text-right text-slate-400 whitespace-nowrap">100</td>
                 {ranked.map((o) => (
                   <td key={o.id} className="py-1.5 px-2 text-right text-slate-100 whitespace-nowrap">
