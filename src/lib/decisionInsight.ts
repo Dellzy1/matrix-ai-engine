@@ -1,5 +1,5 @@
 import { contributions, explain, type Criterion, type Option } from "./explainRanking";
-import { clampRating } from "./scoring";
+import { adjustedRating, clampRating } from "./scoring";
 
 // The thresholds agreed for Decision Loop. Scores are the 0–100 overall scores on the results screen.
 // No Strong Option is checked first, so a low top score is never called a clear winner.
@@ -102,7 +102,7 @@ export function singleChangeToLevel(
     if (weight <= 0) continue;
     const raw = clampRating(option.scores[c.id]);
     // The most this criterion can still give is 10 adjusted points, so the rating can move this many steps.
-    const adjusted = c.isInverted ? 11 - raw : raw;
+    const adjusted = adjustedRating(raw, c.isInverted);
     const room = 10 - adjusted;
     const steps = Math.ceil(gap / weight);
     if (steps > room) continue;
