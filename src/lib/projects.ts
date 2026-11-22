@@ -14,6 +14,10 @@ export type Project = {
   expected_result: string;
   success_measure: string;
   budget: string;
+  // Numeric budget, used by the Challenge Engine. The text budget above stays as the description.
+  budget_amount: number | null;
+  budget_currency: string;
+  budget_status: "" | "estimated" | "committed" | "spent";
   resources: string;
   selected_option: string | null;
   category: string;
@@ -52,7 +56,17 @@ export type Task = {
 };
 
 // A task's status and deadline, as loaded for the plan list.
-export type TaskRow = { project_id: string; status: TaskStatus; due_date: string | null };
+export type TaskRow = {
+  project_id: string;
+  status: TaskStatus;
+  due_date: string | null;
+  // Loaded for the Next Step Engine, which names the task and ranks by priority.
+  id?: string;
+  title?: string;
+  priority?: Priority;
+  start_date?: string | null;
+  stage_id?: string | null;
+};
 
 export type Note = {
   id: string;
@@ -69,6 +83,9 @@ export type ProjectInput = {
   expected_result: string;
   success_measure: string;
   budget?: string;
+  budget_amount?: number | null;
+  budget_currency?: string;
+  budget_status?: "" | "estimated" | "committed" | "spent";
   resources?: string;
   selected_option: string | null;
   // The calculator's top choice when the plan was created. The user does not change it.
@@ -125,7 +142,7 @@ export async function listProjects(sb: SupabaseClient, userId: string) {
   // Only the columns needed for the progress bars and overdue labels are loaded here.
   const { data: taskRows, error: taskError } = await sb
     .from("project_tasks")
-    .select("project_id,status,due_date")
+    .select("id,project_id,stage_id,title,priority,status,start_date,due_date")
     .in("project_id", projects.map((p) => p.id));
   return {
     projects,

@@ -9,6 +9,8 @@ import { QUICK_TOOLS, TOOLS, type ToolDef, type ToolId } from "@/lib/tools";
 import DesktopHome from "./DesktopHome";
 import type { HomeMessage } from "@/lib/homeMessages";
 import type { NextStep } from "@/lib/nextStep";
+import type { Finding } from "@/lib/intelligence";
+import { INTEL_STRINGS, findingSentence } from "@/lib/intelligenceStrings";
 import { PLAN_ONLY_ACTIONS } from "@/lib/nextStep";
 import { nextStepText } from "@/lib/nextStepStrings";
 import NextStepCard from "./NextStepCard";
@@ -23,6 +25,9 @@ type Props = {
   onOpenSettings: () => void;
   message: HomeMessage;
   nextStep?: NextStep | null;
+  nextAlternatives?: NextStep[];
+  challenge?: Finding | null;
+  onOpenChallenge?: (finding: Finding) => void;
   onOpenNextStep?: (step: NextStep, focused: boolean) => void;
 };
 
@@ -49,7 +54,7 @@ const titleOf: Record<ToolId, (h: HomeText, x: ToolText) => string> = {
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
 export default function HomeDashboard({
-  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message, nextStep, onOpenNextStep,
+  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message, nextStep, nextAlternatives, challenge, onOpenChallenge, onOpenNextStep,
 }: Props) {
   const h = HOME_STRINGS[lang];
   const x = TOOL_STRINGS[lang];
@@ -89,8 +94,25 @@ export default function HomeDashboard({
               : () => onOpenNextStep(nextStep, false)
           }
           secondaryLabel={nextStepText(lang, nextStep).viewPlan}
+          alternatives={nextAlternatives}
+          onAlternative={(alt) => onOpenNextStep(alt, !PLAN_ONLY_ACTIONS.includes(alt.action))}
         />
       </div>
+    )}
+    {/* The challenge comes second. The next step stays the main focus. */}
+    {challenge && onOpenChallenge && (
+      <section className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-950/20 p-4 space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">{INTEL_STRINGS[lang].heading}</p>
+        <p className="text-sm text-slate-200">{findingSentence(lang, challenge)}</p>
+        <p className="text-xs text-slate-400">{challenge.projectTitle}</p>
+        <button
+          type="button"
+          onClick={() => onOpenChallenge(challenge)}
+          className="text-xs font-semibold text-amber-200 underline underline-offset-4 hover:text-white"
+        >
+          {INTEL_STRINGS[lang].review}
+        </button>
+      </section>
     )}
     {/* Phones and tablets: the layout below. Large screens show DesktopHome instead. */}
     <div id="top" className="relative overflow-hidden rounded-3xl text-slate-100 lg:hidden">

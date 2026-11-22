@@ -24,7 +24,9 @@ import { SCORE_NOTE_STRINGS } from "@/lib/scoreNoteStrings";
 import { HOME_STRINGS } from "@/lib/homeStrings";
 import { PLAN_STRINGS } from "@/lib/planStrings";
 import { buildHomeMessage } from "@/lib/homeMessages";
-import { nextStepForHome, type NextAction, type NextStep } from "@/lib/nextStep";
+import { nextStepsForHome, type NextAction, type NextStep } from "@/lib/nextStep";
+import { challengesForHome, type Finding } from "@/lib/intelligence";
+import { loadChallengeInputs, logNextStepAccepted } from "@/lib/intelligenceData";
 import { HELP_STRINGS } from "@/lib/helpStrings";
 import HelpPopup from "./HelpPopup";
 import { rankOptions } from "@/lib/reportData";
@@ -403,10 +405,27 @@ export default function App() {
     [user, lang, today, savedMatrices.length, plans, planRows],
   );
   // The single most urgent next step across the user's projects.
-  const homeNextStep = useMemo(
-    () => (user ? nextStepForHome(plans, planRows, today, savedMatrices) : null),
+  const homeSteps = useMemo(
+    () => (user ? nextStepsForHome(plans, planRows, today, savedMatrices) : { primary: null, alternatives: [] }),
     [user, plans, planRows, today, savedMatrices],
   );
+  // The most important open challenge across active plans. Shown on the home screen, below the next step.
+  const [homeChallenges, setHomeChallenges] = useState<Finding[]>([]);
+  useEffect(() => {
+    if (!user || !supabase) {
+      setHomeChallenges([]);
+      return;
+    }
+    let cancelled = false;
+    const active = plans.filter((p) => p.status === "active");
+    loadChallengeInputs(supabase, today, active).then((inputs) => {
+      if (cancelled) return;
+      setHomeChallenges(challengesForHome(inputs).filter((f) => f.status === "open"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, plans, planRows, today]);
   const completedPlans = useMemo(
     () =>
       plans
@@ -576,6 +595,8 @@ export default function App() {
     setViewState("plan");
   };
   const openNextStep = (step: NextStep, focused: boolean) => {
+    // Logs that the user acted on this recommendation. It is not logged just for being shown.
+    if (user && supabase) logNextStepAccepted(supabase, user.id, step).catch(() => {});
     if (step.action === "create_plan" && step.decisionId) {
       const decision = savedMatrices.find((m) => m.id === step.decisionId);
       const top = decision ? rankOptions(decision.criteria ?? [], decision.options ?? [])[0] : undefined;
@@ -1061,7 +1082,14 @@ export default function App() {
               onStartDecision={handleStartNew}
               onCreatePlan={() => openActionPlan(null)}
               message={homeMessage}
-              nextStep={homeNextStep}
+              nextStep={homeSteps.primary}
+              nextAlternatives={homeSteps.alternatives}
+              challenge={homeChallenges[0] ?? null}
+              onOpenChallenge={(f: Finding) => {
+                setPlanSeed(null);
+                setPlanFocus({ projectId: f.projectId, action: null });
+                setViewState("plan");
+              }}
               onOpenNextStep={openNextStep}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}

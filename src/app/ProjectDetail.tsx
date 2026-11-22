@@ -12,8 +12,11 @@ import { nextStepText } from "@/lib/nextStepStrings";
 import NextStepCard from "./NextStepCard";
 import ReportPreview from "./ReportPreview";
 import { REPORT_UI } from "@/lib/reportStrings";
-import ChallengePanel from "./ChallengePanel";
-import { challengesFor } from "@/lib/challenges";
+import IntelligencePanel from "./IntelligencePanel";
+import AssumptionsPanel from "./AssumptionsPanel";
+import { loadChallengeInputs, findingsFor, respondToFinding, addAssumption, setAssumptionStatus, addEvidence } from "@/lib/intelligenceData";
+import type { ChallengeInput } from "@/lib/intelligence";
+import { INTEL_STRINGS } from "@/lib/intelligenceStrings";
 import {
   addActivity,
   addNote,
@@ -129,6 +132,19 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
   const [focusOn, setFocusOn] = useState<NextAction | null>(focus ?? null);
 
   const [editing, setEditing] = useState(false);
+  // The Challenge Engine's inputs for this plan. Reloaded after every response, so the list stays current.
+  const [intel, setIntel] = useState<ChallengeInput | null>(null);
+  const [intelTick, setIntelTick] = useState(0);
+  useEffect(() => {
+    if (!supabase || !project) return;
+    let cancelled = false;
+    loadChallengeInputs(supabase, todayKey(), [project]).then(([input]) => {
+      if (!cancelled) setIntel(input ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, project, tasks, stages, intelTick]);
   const [draft, setDraft] = useState<Partial<Project>>({});
   const [newStageTitle, setNewStageTitle] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -195,7 +211,13 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
   const progress = calcProgress(tasks);
   const today = todayKey();
   const nextStep = project ? nextStepFor(project, tasks, today) : null;
-  const challenges = project ? challengesFor(project, tasks, today) : [];
+  const findings = intel ? findingsFor(intel) : [];
+  const respondTo = async (finding: import("@/lib/intelligence").Finding, response: "accepted" | "rejected" | "explained" | "resolved", note: string) => {
+    if (!supabase) return;
+    const { error } = await respondToFinding(supabase, userId, finding, response, note);
+    if (error) setError(error);
+    setIntelTick((n) => n + 1);
+  };
   const overdueCount = tasks.filter((x) => dueState(x.due_date, x.status, today) === "overdue").length;
 
   const nextPosition = (stageId: string | null) => {
@@ -217,6 +239,9 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       expected_result: project.expected_result,
       success_measure: project.success_measure,
       budget: project.budget ?? "",
+      budget_amount: project.budget_amount ?? null,
+      budget_currency: project.budget_currency ?? "",
+      budget_status: project.budget_status ?? "",
       resources: project.resources ?? "",
       category: project.category,
       start_date: project.start_date,
@@ -247,6 +272,9 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
       expected_result: draft.expected_result ?? "",
       success_measure: draft.success_measure ?? "",
       budget: draft.budget ?? "",
+      budget_amount: draft.budget_amount ?? null,
+      budget_currency: (draft.budget_currency ?? "").trim().toUpperCase(),
+      budget_status: draft.budget_status ?? "",
       resources: draft.resources ?? "",
       category: draft.category ?? "Other",
       start_date: draft.start_date || null,
@@ -473,6 +501,13 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
               {project.expected_result && <p><span className="text-slate-400">{t.fieldExpected} </span>{project.expected_result}</p>}
               {project.success_measure && <p><span className="text-slate-400">{t.fieldMeasure} </span>{project.success_measure}</p>}
               {project.budget && <p><span className="text-slate-400">{t.fieldBudget} </span>{project.budget}</p>}
+              {project.budget_amount != null && (
+                <p>
+                  <span className="text-slate-400">{INTEL_STRINGS[lang].budgetAmount}: </span>
+                  {project.budget_amount} {project.budget_currency}
+                  {project.budget_status && ` · ${INTEL_STRINGS[lang][project.budget_status === "estimated" ? "statusEstimated" : project.budget_status === "committed" ? "statusCommitted" : "statusSpent"]}`}
+                </p>
+              )}
               {project.resources && <p><span className="text-slate-400">{t.fieldResources} </span>{project.resources}</p>}
               {decisionOptions.length > 0 && (
                 <div className="col-span-full space-y-2">
@@ -532,6 +567,39 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
             <input className={field} value={draft.expected_result ?? ""} onChange={(e) => setDraft({ ...draft, expected_result: e.target.value })} placeholder={t.fieldExpected} />
             <input className={field} value={draft.success_measure ?? ""} onChange={(e) => setDraft({ ...draft, success_measure: e.target.value })} placeholder={t.fieldMeasure} />
             <input className={field} value={draft.budget ?? ""} onChange={(e) => setDraft({ ...draft, budget: e.target.value })} placeholder={t.fieldBudget} maxLength={200} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <input
+                type="number"
+                min={0}
+                step="any"
+                className={field}
+                value={draft.budget_amount ?? ""}
+                onChange={(e) =>
+                  setDraft({ ...draft, budget_amount: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })
+                }
+                placeholder={INTEL_STRINGS[lang].budgetAmount}
+                aria-label={INTEL_STRINGS[lang].budgetAmount}
+              />
+              <input
+                className={field}
+                value={draft.budget_currency ?? ""}
+                onChange={(e) => setDraft({ ...draft, budget_currency: e.target.value })}
+                placeholder={INTEL_STRINGS[lang].budgetCurrency}
+                aria-label={INTEL_STRINGS[lang].budgetCurrency}
+                maxLength={6}
+              />
+              <select
+                className={field}
+                value={draft.budget_status ?? ""}
+                onChange={(e) => setDraft({ ...draft, budget_status: e.target.value as "" | "estimated" | "committed" | "spent" })}
+                aria-label={INTEL_STRINGS[lang].budgetStatus}
+              >
+                <option value="">{INTEL_STRINGS[lang].statusNone}</option>
+                <option value="estimated">{INTEL_STRINGS[lang].statusEstimated}</option>
+                <option value="committed">{INTEL_STRINGS[lang].statusCommitted}</option>
+                <option value="spent">{INTEL_STRINGS[lang].statusSpent}</option>
+              </select>
+            </div>
             <input className={field} value={draft.resources ?? ""} onChange={(e) => setDraft({ ...draft, resources: e.target.value })} placeholder={t.fieldResources} maxLength={300} />
             <input className={field} value={draft.selected_option ?? ""} onChange={(e) => setDraft({ ...draft, selected_option: e.target.value })} placeholder={t.fieldChosen} maxLength={200} />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -557,6 +625,7 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
               return setCompleting(true);
             }
             if (nextStep.action === "archive") return archive();
+            if (nextStep.action === "no_project_deadline") return startEdit();
             if (nextStep.action === "no_tasks") return setFocusOn(null);
             setTab("plan");
             setFocusOn(nextStep.action);
@@ -566,7 +635,32 @@ export default function ProjectDetail({ lang, supabase, userId, projectId, focus
         />
       )}
 
-      {challenges.length > 0 && <ChallengePanel lang={lang} challenges={challenges} onFix={() => { startEdit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      <IntelligencePanel lang={lang} findings={findings} onRespond={respondTo} />
+      {intel && (
+        <AssumptionsPanel
+          lang={lang}
+          field={field}
+          assumptions={intel.assumptions.filter((a) => a.project_id === project.id)}
+          onAdd={async (statement) => {
+            if (!supabase) return;
+            const { error } = await addAssumption(supabase, userId, project.id, project.decision_id, statement);
+            if (error) setError(error);
+            setIntelTick((n) => n + 1);
+          }}
+          onStatus={async (id, status) => {
+            if (!supabase) return;
+            const { error } = await setAssumptionStatus(supabase, id, status);
+            if (error) setError(error);
+            setIntelTick((n) => n + 1);
+          }}
+          onEvidence={async (id, stance, content) => {
+            if (!supabase) return;
+            const { error } = await addEvidence(supabase, userId, id, stance, content);
+            if (error) setError(error);
+            setIntelTick((n) => n + 1);
+          }}
+        />
+      )}
 
       {/* Overdue reminder, shown on every tab except Daily */}
       {overdueCount > 0 && tab !== "daily" && (
