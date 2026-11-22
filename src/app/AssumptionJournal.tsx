@@ -22,6 +22,15 @@ import {
   summarise,
   updateAssumption,
   validateAssumption,
+  addEvidence,
+  deleteEvidence,
+  loadEvidence,
+  loadEvidenceCounts,
+  validateEvidence,
+  STANCES,
+  type Evidence,
+  type EvidenceCounts,
+  type Stance,
   type Assumption,
   type Category,
   type Filters,
@@ -31,6 +40,7 @@ import {
   type ValidationKey,
 } from "@/lib/assumptionJournal";
 import { JOURNAL_STRINGS } from "@/lib/assumptionJournalStrings";
+import { EVIDENCE_STRINGS } from "@/lib/assumptionEvidenceStrings";
 
 type Props = {
   lang: Lang;
@@ -76,6 +86,16 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
   // Delete flow
   const [deleteStep, setDeleteStep] = useState<null | { count: number }>(null);
 
+  // Evidence (Round 2)
+  const ec = EVIDENCE_STRINGS[lang];
+  const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
+  const [evCounts, setEvCounts] = useState<Record<string, EvidenceCounts>>({});
+  const [evStance, setEvStance] = useState<Stance>("supports");
+  const [evContent, setEvContent] = useState("");
+  const [evSource, setEvSource] = useState("");
+  const [evError, setEvError] = useState<string | null>(null);
+  const [evSaving, setEvSaving] = useState(false);
+
   const today = todayKey();
 
   async function reload() {
@@ -84,6 +104,7 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
     setItems(a.data);
     setLoadError(a.error);
     setLinks(l);
+    setEvCounts(await loadEvidenceCounts(sb, userId));
     setLoading(false);
   }
 
@@ -177,6 +198,50 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
     if (!selected) return;
     const count = await evidenceCount(sb, selected.id);
     setDeleteStep({ count });
+  }
+
+  // Evidence handlers (Round 2). Evidence never changes confidence or status.
+  async function loadSelectedEvidence(id: string) {
+    const r = await loadEvidence(sb, id);
+    setEvidenceList(r.data);
+  }
+
+  useEffect(() => {
+    if (mode === "detail" && selected) loadSelectedEvidence(selected.id);
+    // Reloads when a different assumption is opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selected?.id]);
+
+  async function addEvidenceItem() {
+    if (!selected) return;
+    const problem = validateEvidence(evContent);
+    if (problem) {
+      setEvError(ec[problem]);
+      return;
+    }
+    setEvSaving(true);
+    setEvError(null);
+    const r = await addEvidence(sb, userId, selected.id, evStance, evContent, evSource);
+    setEvSaving(false);
+    if (r.error) {
+      setEvError(t.saveError);
+      return;
+    }
+    setEvContent("");
+    setEvSource("");
+    await loadSelectedEvidence(selected.id);
+    setEvCounts(await loadEvidenceCounts(sb, userId));
+  }
+
+  async function removeEvidenceItem(id: string) {
+    if (!selected) return;
+    const r = await deleteEvidence(sb, id);
+    if (r.error) {
+      setEvError(t.saveError);
+      return;
+    }
+    await loadSelectedEvidence(selected.id);
+    setEvCounts(await loadEvidenceCounts(sb, userId));
   }
 
   const errorText = formError ? t[formError === "saveError" ? "saveError" : formError] : null;
@@ -332,8 +397,73 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
             <Field label={t.status} value={t.statuses[selected.status]} />
             <Field label={t.reviewDate} value={selected.review_date ?? t.notSet} />
             <Field label={t.nextAction} value={selected.next_validation_action || t.notSet} />
-            <Field label={t.evidence} value={t.detailNote} />
+          <Field label={t.evidence} value={fmt(ec.counts, { s: evCounts[selected.id]?.supports ?? 0, o: evCounts[selected.id]?.opposes ?? 0 })} />
           </dl>
+
+          <div className="space-y-3 border-t border-slate-800 pt-4">
+            <h4 className="text-sm font-bold text-indigo-400">{ec.heading}</h4>
+            <p className="text-[11px] text-slate-400">{ec.hint}</p>
+            {evidenceList.length === 0 ? (
+              <p className="text-xs text-slate-500">{ec.empty}</p>
+            ) : (
+              <ul className="space-y-2">
+                {evidenceList.map((item) => (
+                  <li
+                    key={item.id}
+                    className={`p-3 rounded-xl border text-xs space-y-1 ${item.stance === "supports" ? "border-emerald-800/60 bg-emerald-950/20" : "border-rose-800/60 bg-rose-950/20"}`}
+                  >
+                    <div className="flex justify-between gap-2">
+                      <span className={`font-semibold ${item.stance === "supports" ? "text-emerald-300" : "text-rose-300"}`}>
+                        {item.stance === "supports" ? ec.supports : ec.opposes}
+                      </span>
+                      <button type="button" onClick={() => removeEvidenceItem(item.id)} className="text-slate-400 hover:text-rose-300">
+                        {ec.remove}
+                      </button>
+                    </div>
+                    <p className="text-slate-200 break-words">{item.content}</p>
+                    {item.source && <p className="text-slate-500 break-words">{item.source}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <select value={evStance} onChange={(ev) => setEvStance(ev.target.value as Stance)} className={`${field} border rounded-xl p-2 text-xs`}>
+                {STANCES.map((s) => (
+                  <option key={s} value={s}>
+                    {s === "supports" ? ec.supports : ec.opposes}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={evContent}
+                onChange={(ev) => setEvContent(ev.target.value)}
+                placeholder={ec.contentPlaceholder}
+                aria-label={ec.content}
+                className={`sm:col-span-2 ${field} border rounded-xl p-2 text-xs`}
+              />
+              <input
+                type="text"
+                value={evSource}
+                onChange={(ev) => setEvSource(ev.target.value)}
+                placeholder={ec.sourcePlaceholder}
+                aria-label={ec.source}
+                className={`sm:col-span-3 ${field} border rounded-xl p-2 text-xs`}
+              />
+            </div>
+            {evError && <p className="text-xs text-rose-300">{evError}</p>}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={addEvidenceItem}
+                disabled={evSaving}
+                className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 rounded-xl px-4 py-2"
+              >
+                {ec.add}
+              </button>
+            </div>
+          </div>
+
 
           {deleteStep ? (
             <div className="p-3 rounded-xl border border-rose-800 bg-rose-950/40 space-y-2 text-xs">
@@ -450,6 +580,7 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
                           <Pill>{t.importance}: {a.importance ? t.importanceLabels[a.importance] : t.notSet}</Pill>
                           <Pill>{t.confidence}: {a.confidence !== null ? `${a.confidence}%` : t.notSet}</Pill>
                           <Pill>{t.statuses[a.status]}</Pill>
+                          <Pill>{fmt(ec.counts, { s: evCounts[a.id]?.supports ?? 0, o: evCounts[a.id]?.opposes ?? 0 })}</Pill>
                           {attn && <Pill tone="amber">{attn === "high" ? t.alertHigh : t.alertReview}</Pill>}
                           {isReviewOverdue(a, today) && <Pill tone="rose">{t.overdue}</Pill>}
                         </span>

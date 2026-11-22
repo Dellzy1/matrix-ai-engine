@@ -191,3 +191,68 @@ export async function deleteAssumption(sb: SupabaseClient, id: string): Promise<
   const { error } = await sb.from("assumptions").delete().eq("id", id);
   return { error: error?.message ?? null };
 }
+
+// Evidence (Round 2). Evidence is kept separate from confidence: counts show what was found,
+// they never change the user's confidence or the assumption's status.
+export const STANCES = ["supports", "opposes"] as const;
+export type Stance = (typeof STANCES)[number];
+
+export type Evidence = {
+  id: string;
+  assumption_id: string;
+  stance: Stance;
+  content: string;
+  source: string;
+  created_at: string;
+};
+
+export type EvidenceCounts = { supports: number; opposes: number };
+
+export function validateEvidence(content: string): "vEvidence" | null {
+  return content.trim() ? null : "vEvidence";
+}
+
+export async function loadEvidence(sb: SupabaseClient, assumptionId: string): Promise<{ data: Evidence[]; error: string | null }> {
+  const { data, error } = await sb
+    .from("evidence")
+    .select("id,assumption_id,stance,content,source,created_at")
+    .eq("assumption_id", assumptionId)
+    .order("created_at", { ascending: false });
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as Evidence[], error: null };
+}
+
+// Counts for every assumption of this user, read in one query.
+export async function loadEvidenceCounts(sb: SupabaseClient, userId: string): Promise<Record<string, EvidenceCounts>> {
+  const { data } = await sb.from("evidence").select("assumption_id,stance").eq("user_id", userId);
+  const map: Record<string, EvidenceCounts> = {};
+  for (const row of (data ?? []) as { assumption_id: string; stance: Stance }[]) {
+    const entry = (map[row.assumption_id] ??= { supports: 0, opposes: 0 });
+    if (row.stance === "supports") entry.supports += 1;
+    else entry.opposes += 1;
+  }
+  return map;
+}
+
+export async function addEvidence(
+  sb: SupabaseClient,
+  userId: string,
+  assumptionId: string,
+  stance: Stance,
+  content: string,
+  source: string,
+): Promise<{ error: string | null }> {
+  const { error } = await sb.from("evidence").insert({
+    user_id: userId,
+    assumption_id: assumptionId,
+    stance,
+    content: content.trim(),
+    source: source.trim(),
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function deleteEvidence(sb: SupabaseClient, id: string): Promise<{ error: string | null }> {
+  const { error } = await sb.from("evidence").delete().eq("id", id);
+  return { error: error?.message ?? null };
+}
