@@ -1,3 +1,5 @@
+import { maxPoints, weightedPoints } from "./scoring";
+
 // Turns the Calculator's current results into the data the PDF shows.
 // It reads the scores and ranking the Calculator already displays. It never recalculates them,
 // and it never invents a value the Calculator does not have.
@@ -9,6 +11,9 @@ export type CalculatorReportOption = {
   name: string;
   criterionScores: { criterionId: string; score: number | null }[];
   finalScore: number;
+  // Weighted points this option earned, and the most the criteria could give. Both from the shared scoring engine.
+  earnedPoints: number;
+  maxPoints: number;
   rank: number;
   // Only the reasons the user typed, in criteria order. Never generated.
   reasons: { criterionId: string; criterionName: string; score: number | null; text: string }[];
@@ -55,6 +60,8 @@ export function buildCalculatorReport(input: {
     name: o.name.trim(),
     criterionScores: input.criteria.map((c) => ({ criterionId: c.id, score: o.scores[c.id] ?? null })),
     finalScore: o.score,
+    earnedPoints: Math.round(input.criteria.reduce((sum, c) => sum + weightedPoints(c, o), 0)),
+    maxPoints: Math.round(input.criteria.reduce((sum, c) => sum + maxPoints(c), 0)),
     rank: index + 1,
     reasons: input.criteria.flatMap((c) => {
       const text = (o.notes?.[c.id] ?? "").trim();

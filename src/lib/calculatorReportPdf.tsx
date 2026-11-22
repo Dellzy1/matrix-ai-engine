@@ -5,6 +5,7 @@ import { registerChineseFont, fontFamilyFor } from "./reportPdf";
 import { CALC_REPORT_STRINGS } from "./calculatorReportStrings";
 import type { CalculatorReportData } from "./calculatorReport";
 import { fill } from "./reportStrings";
+import { PDF_POINTS_STRINGS } from "./pdfPointsStrings";
 
 const NAVY = "#0b0f2a";
 const PURPLE = "#3b1d6e";
@@ -142,7 +143,12 @@ export function CalculatorReportDocument({ report, lang }: { report: CalculatorR
                 </Text>
               );
             })}
-            <Text style={{ width: overallW, textAlign: "right", fontWeight: "bold" }}>{`${opt.finalScore}/100`}</Text>
+            <View style={{ width: overallW, alignItems: "flex-end" }}>
+              <Text style={{ textAlign: "right", fontWeight: "bold" }}>{`${opt.finalScore}/100`}</Text>
+              <Text style={{ textAlign: "right", fontSize: cellSize - 1, color: MUTED }}>
+                {fill(PDF_POINTS_STRINGS[lang], { earned: opt.earnedPoints, max: opt.maxPoints })}
+              </Text>
+            </View>
             <Text style={{ width: rankW, textAlign: "right" }}>{String(opt.rank)}</Text>
           </View>
         ))}
@@ -159,6 +165,7 @@ export function CalculatorReportDocument({ report, lang }: { report: CalculatorR
             <View style={{ flex: 1 }}>
               {index === 0 && <Text style={st.topLabel}>{c.topLabel}</Text>}
               <Text style={st.bold}>{opt.name || c.unnamed}</Text>
+              <Text style={st.muted}>{fill(PDF_POINTS_STRINGS[lang], { earned: opt.earnedPoints, max: opt.maxPoints })}</Text>
               {index === 0 && <Text style={st.muted}>{c.topNote}</Text>}
             </View>
             <Text style={{ width: 80, textAlign: "right", fontWeight: "bold" }}>{`${opt.finalScore}/100`}</Text>
