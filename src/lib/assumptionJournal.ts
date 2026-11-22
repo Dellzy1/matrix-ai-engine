@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addActivity, addTask } from "./projects";
 
 // The Assumption Journal (Round 1). It uses the existing assumptions table. It adds no second status system.
 // Confidence is the user's stated belief (0–100). It is never treated as a probability of success.
@@ -25,6 +26,11 @@ export type Assumption = {
   decision_id: string | null;
   created_at: string;
   updated_at: string;
+  // Validation plan (Round 3)
+  validation_method: string | null;
+  validation_success_measure: string | null;
+  validation_due_date: string | null;
+  validation_task_id: string | null;
 };
 
 export type AssumptionInput = {
@@ -130,7 +136,7 @@ export type LinkOption = { value: string; label: string };
 export async function loadAssumptions(sb: SupabaseClient, userId: string): Promise<{ data: Assumption[]; error: string | null }> {
   const { data, error } = await sb
     .from("assumptions")
-    .select("id,statement,status,importance,confidence,category,review_date,next_validation_action,project_id,decision_id,created_at,updated_at")
+    .select("id,statement,status,importance,confidence,category,review_date,next_validation_action,project_id,decision_id,created_at,updated_at,validation_method,validation_success_measure,validation_due_date,validation_task_id")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) return { data: [], error: error.message };
@@ -255,4 +261,69 @@ export async function addEvidence(
 export async function deleteEvidence(sb: SupabaseClient, id: string): Promise<{ error: string | null }> {
   const { error } = await sb.from("evidence").delete().eq("id", id);
   return { error: error?.message ?? null };
+}
+
+// Validation plans (Round 3). A plan says how the assumption will be tested and what would count as success.
+// Saving a plan never changes status, and never creates a task by itself.
+export type ValidationPlan = { method: string; success_measure: string; due_date: string | null };
+export type PlanKey = "vPlanMethod" | "vPlanSuccess" | "vPlanDate" | "vPlanNoProject";
+
+export function validatePlan(plan: ValidationPlan): PlanKey | null {
+  if (!plan.method.trim()) return "vPlanMethod";
+  if (!plan.success_measure.trim()) return "vPlanSuccess";
+  if (plan.due_date && !/^\d{4}-\d{2}-\d{2}$/.test(plan.due_date)) return "vPlanDate";
+  return null;
+}
+
+export async function savePlan(sb: SupabaseClient, id: string, plan: ValidationPlan): Promise<{ error: string | null }> {
+  const { error } = await sb
+    .from("assumptions")
+    .update({
+      validation_method: plan.method.trim(),
+      validation_success_measure: plan.success_measure.trim(),
+      validation_due_date: plan.due_date || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  return { error: error?.message ?? null };
+}
+
+export type PlanResult =
+  | { kind: "added"; taskId: string }
+  | { kind: "already"; taskId: string }
+  | { kind: "problem"; key: PlanKey }
+  | { kind: "error"; message: string };
+
+// Adds one task to the linked project's Action Plan. Only runs when the user presses the button.
+// An assumption linked only to a decision has no Action Plan task list, so it is told to create a plan first.
+export async function addPlanToActionPlan(
+  sb: SupabaseClient,
+  userId: string,
+  a: Assumption,
+  plan: ValidationPlan,
+): Promise<PlanResult> {
+  if (a.validation_task_id) return { kind: "already", taskId: a.validation_task_id };
+  if (!a.project_id) return { kind: "problem", key: "vPlanNoProject" };
+
+  const [stages, count] = await Promise.all([
+    sb.from("project_stages").select("id").eq("project_id", a.project_id).order("position", { ascending: true }).limit(1),
+    sb.from("project_tasks").select("id", { count: "exact", head: true }).eq("project_id", a.project_id),
+  ]);
+  const stageId = (stages.data?.[0] as { id: string } | undefined)?.id ?? null;
+
+  const task = await addTask(sb, a.project_id, {
+    title: `Validate: ${a.statement}`,
+    description: `${plan.method.trim()}\nSuccess: ${plan.success_measure.trim()}`,
+    priority: "medium",
+    stage_id: stageId,
+    start_date: null,
+    due_date: plan.due_date || null,
+    position: count.count ?? 0,
+  });
+  if (task.error || !task.data) return { kind: "error", message: task.error ?? "task" };
+
+  const { error } = await sb.from("assumptions").update({ validation_task_id: task.data.id }).eq("id", a.id);
+  if (error) return { kind: "error", message: error.message };
+  await addActivity(sb, a.project_id, userId, task.data.id, "task_added", `Validation task added: ${a.statement}`);
+  return { kind: "added", taskId: task.data.id };
 }

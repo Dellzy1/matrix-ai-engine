@@ -41,6 +41,8 @@ import {
 } from "@/lib/assumptionJournal";
 import { JOURNAL_STRINGS } from "@/lib/assumptionJournalStrings";
 import { EVIDENCE_STRINGS } from "@/lib/assumptionEvidenceStrings";
+import { PLAN_STRINGS } from "@/lib/assumptionPlanStrings";
+import AssumptionPlanPanel from "./AssumptionPlanPanel";
 
 type Props = {
   lang: Lang;
@@ -98,7 +100,7 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
 
   const today = todayKey();
 
-  async function reload() {
+  async function reload(): Promise<Assumption[]> {
     setLoading(true);
     const [a, l] = await Promise.all([loadAssumptions(sb, userId), loadLinkOptions(sb, userId)]);
     setItems(a.data);
@@ -106,6 +108,15 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
     setLinks(l);
     setEvCounts(await loadEvidenceCounts(sb, userId));
     setLoading(false);
+    return a.data;
+  }
+
+  // Reloads the journal and keeps the open detail view showing the saved row (plan, Action Plan link).
+  async function refreshSelected() {
+    if (!selected) return;
+    const rows = await reload();
+    const fresh = rows.find((r) => r.id === selected.id);
+    if (fresh) setSelected(fresh);
   }
 
   useEffect(() => {
@@ -465,6 +476,17 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
           </div>
 
 
+          {selected && (
+            <AssumptionPlanPanel
+              lang={lang}
+              sb={sb}
+              userId={userId}
+              isDark={isDark}
+              assumption={selected}
+              onChanged={refreshSelected}
+            />
+          )}
+
           {deleteStep ? (
             <div className="p-3 rounded-xl border border-rose-800 bg-rose-950/40 space-y-2 text-xs">
               <p className="font-bold text-rose-200">{t.deleteTitle}</p>
@@ -583,6 +605,7 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
                           <Pill>{fmt(ec.counts, { s: evCounts[a.id]?.supports ?? 0, o: evCounts[a.id]?.opposes ?? 0 })}</Pill>
                           {attn && <Pill tone="amber">{attn === "high" ? t.alertHigh : t.alertReview}</Pill>}
                           {isReviewOverdue(a, today) && <Pill tone="rose">{t.overdue}</Pill>}
+                          {a.validation_task_id && <Pill>{PLAN_STRINGS[lang].inPlan}</Pill>}
                         </span>
                         <span className="block text-[11px] text-slate-400 break-words">
                           {a.review_date ? `${t.reviewDate}: ${a.review_date}` : `${t.reviewDate}: ${t.notSet}`}
