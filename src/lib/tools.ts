@@ -26,7 +26,7 @@ export type ToolModule =
   | "community";
 
 // Which screen a tile opens. "soon" means no screen yet.
-export type ToolAction = "calc" | "plan" | "vault" | "soon";
+export type ToolAction = "calc" | "plan" | "vault" | "journal" | "soon";
 
 export type ToolDef = {
   id: ToolId;
@@ -47,7 +47,7 @@ export const TOOLS: ToolDef[] = [
   { id: "business", img: "business-builder", module: "business", action: "soon" },
   { id: "creative", img: "creative-studio", module: "creative", action: "soon" },
   { id: "accountability", img: "accountability-partner", module: "community", action: "soon" },
-  { id: "journal", img: "assumption-journal", module: "decision", action: "soon" },
+  { id: "journal", img: "assumption-journal", module: "decision", action: "journal" },
   { id: "vault", img: "decision-vault", module: "decision", action: "vault" },
 ];
 

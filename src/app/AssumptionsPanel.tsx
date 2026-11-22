@@ -1,11 +1,12 @@
 "use client";
 
+import { JOURNAL_STRINGS } from "@/lib/assumptionJournalStrings";
 import { useState } from "react";
 import type { Lang } from "@/lib/i18n";
 import type { ChallengeAssumption } from "@/lib/intelligence";
 import { INTEL_STRINGS } from "@/lib/intelligenceStrings";
 
-type Status = "unvalidated" | "supported" | "contradicted" | "validated" | "dismissed";
+type Status = "unvalidated" | "testing" | "supported" | "contradicted" | "validated" | "dismissed";
 type Props = {
   lang: Lang;
   assumptions: ChallengeAssumption[];
@@ -21,7 +22,9 @@ export default function AssumptionsPanel({ lang, assumptions, field, onAdd, onSt
   const copy = INTEL_STRINGS[lang];
   const [statement, setStatement] = useState("");
   const [drafts, setDrafts] = useState<Record<string, { stance: "supports" | "opposes"; content: string }>>({});
-  const statuses: Status[] = ["unvalidated", "supported", "contradicted", "validated", "dismissed"];
+  const statuses: Status[] = ["unvalidated", "testing", "supported", "contradicted", "validated", "dismissed"];
+  // "Testing" is shown in the same language as the Assumption Journal. It is one shared status, not a second system.
+  const statusLabel = (s: Status) => (s === "testing" ? JOURNAL_STRINGS[lang].statuses.testing : copy.assumptionStatus[s]);
 
   return (
     <section className="rounded-2xl border border-slate-700/60 bg-slate-900/40 p-4 space-y-4">
@@ -61,7 +64,7 @@ export default function AssumptionsPanel({ lang, assumptions, field, onAdd, onSt
                 >
                   {statuses.map((s) => (
                     <option key={s} value={s}>
-                      {copy.assumptionStatus[s]}
+                      {statusLabel(s)}
                     </option>
                   ))}
                 </select>

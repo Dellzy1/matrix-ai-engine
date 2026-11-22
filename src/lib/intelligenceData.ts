@@ -135,7 +135,7 @@ export async function addAssumption(
 export async function setAssumptionStatus(
   sb: SupabaseClient,
   assumptionId: string,
-  status: "unvalidated" | "supported" | "contradicted" | "validated" | "dismissed",
+  status: "unvalidated" | "testing" | "supported" | "contradicted" | "validated" | "dismissed",
 ): Promise<{ error: string | null }> {
   const { error } = await sb
     .from("assumptions")

@@ -20,6 +20,7 @@ type Props = {
   lang: Lang;
   onStartDecision: () => void;
   onOpenVault: () => void;
+  onOpenJournal: () => void;
   onOpenProgress: () => void;
   onCreatePlan: () => void;
   onOpenSettings: () => void;
@@ -54,7 +55,7 @@ const titleOf: Record<ToolId, (h: HomeText, x: ToolText) => string> = {
 const panel = "bg-[#0b0f2a]/70 border border-indigo-500/25";
 
 export default function HomeDashboard({
-  lang, onStartDecision, onOpenVault, onOpenProgress, onCreatePlan, onOpenSettings, message, nextStep, nextAlternatives, challenge, onOpenChallenge, onOpenNextStep,
+  lang, onStartDecision, onOpenVault, onOpenJournal, onOpenProgress, onCreatePlan, onOpenSettings, message, nextStep, nextAlternatives, challenge, onOpenChallenge, onOpenNextStep,
 }: Props) {
   const h = HOME_STRINGS[lang];
   const x = TOOL_STRINGS[lang];
@@ -76,6 +77,7 @@ export default function HomeDashboard({
     if (tile.action === "calc") return onStartDecision();
     if (tile.action === "plan") return onCreatePlan();
     if (tile.action === "vault") return onOpenVault();
+    if (tile.action === "journal") return onOpenJournal();
     showSoon(tile.title, tile.id);
   };
 

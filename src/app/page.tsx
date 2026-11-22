@@ -45,6 +45,7 @@ import { SAVE_CHOICE_STRINGS, type SaveChoice } from "@/lib/saveChoiceStrings";
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
 const VaultScreen = dynamic(() => import("./VaultScreen"), { ssr: false, loading: () => null });
 const ProgressScreen = dynamic(() => import("./ProgressScreen"), { ssr: false, loading: () => null });
+const AssumptionJournal = dynamic(() => import("./AssumptionJournal"), { ssr: false, loading: () => null });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -211,7 +212,7 @@ export default function App() {
     : "bg-slate-50 border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress">("landing");
+  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress" | "journal">("landing");
 
   // The phone and browser Back buttons move between screens. Each screen change is recorded in history.
   const viewFromHistory = useRef(false);
@@ -1105,6 +1106,7 @@ export default function App() {
               onOpenNextStep={openNextStep}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}
+              onOpenJournal={() => setViewState("journal")}
               onOpenProgress={() => setViewState("progress")}
             />
           )}
@@ -1681,6 +1683,17 @@ export default function App() {
               decisionPlans={decisionPlanProgress}
               onOpen={handleLoadSavedDecision}
               onSignIn={() => openAuth("signin")}
+              onBack={() => setViewState("landing")}
+            />
+          )}
+
+          {/* Assumption Journal */}
+          {viewState === "journal" && supabase && user && (
+            <AssumptionJournal
+              lang={lang}
+              sb={supabase}
+              userId={user.id}
+              isDark={isDark}
               onBack={() => setViewState("landing")}
             />
           )}
