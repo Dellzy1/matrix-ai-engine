@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { explain } from "@/lib/explainRanking";
 import DecisionInsight from "./DecisionInsight";
 import SensitivityPanel from "./SensitivityPanel";
+import StabilityCard from "./StabilityCard";
 import {
   Sparkles, History, Sun, Moon, X, Save, Lock, LogOut, UserCheck, Brain, Calendar,
   ArrowLeft, Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Eye, EyeOff, Clock,
@@ -312,6 +313,12 @@ export default function App() {
 
   // Derived values
   const ranked = useMemo(() => scoreOptions(criteria, options), [criteria, options]);
+  // The same calculator ranking, run with trial weights. Used by the sensitivity checks only; nothing is saved.
+  const rankWithWeights = (weights: Record<string, number>) =>
+    scoreOptions(
+      criteria.map((c) => ({ ...c, weight: weights[c.id] ?? c.weight })),
+      options,
+    );
   const checks = useMemo(() => automaticChecks(criteria, t), [criteria, t]);
   // The PDF data is read from what the Calculator shows now. Downloading never changes it.
   const calcReport = useMemo(
@@ -1589,16 +1596,18 @@ export default function App() {
                 </ul>
               </div>
 
+              <StabilityCard
+                lang={lang}
+                criteria={criteria}
+                original={ranked}
+                rankFor={rankWithWeights}
+                surface={surface}
+              />
               <SensitivityPanel
                 lang={lang}
                 criteria={criteria}
                 original={ranked}
-                rankFor={(weights) =>
-                  scoreOptions(
-                    criteria.map((c) => ({ ...c, weight: weights[c.id] ?? c.weight })),
-                    options,
-                  )
-                }
+                rankFor={rankWithWeights}
                 surface={surface}
               />
 
