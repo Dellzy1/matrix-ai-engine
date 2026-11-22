@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProject } from "./projects";
-import { challengesFor } from "./challenges";
+import { challengesForProject } from "./intelligence";
+import { loadChallengeInputs } from "./intelligenceData";
 import { todayKey } from "./planDates";
 import type { DecisionRecord, ReportInput } from "./reportData";
 
@@ -33,6 +34,9 @@ export async function loadReportInput(
     }
   }
 
-  const challenges = challengesFor(project, tasks, todayKey());
+  // The same Challenge Engine the app uses. Resolved items are left out; the rest keep the user's responses.
+  const today = todayKey();
+  const inputs = await loadChallengeInputs(sb, today, [project]);
+  const challenges = inputs.flatMap((input) => challengesForProject(input));
   return { input: { project, stages, tasks, decision, challenges }, error: null };
 }

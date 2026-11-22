@@ -18,7 +18,7 @@ import {
   type ReportVersion,
 } from "@/lib/reportData";
 import { REPORT_CHOOSER, REPORT_STRINGS, REPORT_UI, fill } from "@/lib/reportStrings";
-import { challengeText } from "@/lib/challengeStrings";
+import { findingSentence } from "@/lib/intelligenceStrings";
 import { todayKey } from "@/lib/planDates";
 import { collectStrings, findPlaceholders, placeholderMessage } from "@/lib/placeholders";
 import WarningBox from "./WarningBox";
@@ -335,7 +335,7 @@ function SectionPreview({
         <section className="space-y-2 border-t border-slate-700/60 pt-4">
           {heading(s.sections.risks)}
           {section.items.map((c, i) => (
-            <p key={i} className="text-sm">{`• ${challengeText(lang, c).body}`}</p>
+            <p key={i} className="text-sm">{`• ${findingSentence(lang, c)}`}</p>
           ))}
         </section>
       );

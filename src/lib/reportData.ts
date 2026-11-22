@@ -1,5 +1,5 @@
 import type { Project, Stage, Task, TaskStatus } from "./projects";
-import type { Challenge } from "./challenges";
+import type { Finding } from "./intelligence";
 
 // The report's content, built from saved data only. Nothing here is invented:
 // a missing value stays missing, and a section with nothing to show is left out.
@@ -21,7 +21,7 @@ export type ReportInput = {
   tasks: Task[];
   // The saved decision this plan came from, or null if the plan was not linked to one.
   decision: DecisionRecord | null;
-  challenges: Challenge[];
+  challenges: Finding[];
 };
 
 export type SummaryKey = "description" | "goal" | "expected" | "measure" | "start" | "deadline";
@@ -33,7 +33,7 @@ export type ReportSection =
   | { kind: "choice"; chosen: string | null; recommended: string | null }
   | { kind: "stages"; done: number; total: number; groups: { title: string | null; tasks: { title: string; status: TaskStatus; due: string | null }[] }[] }
   | { kind: "budget"; budget: string | null; resources: string | null }
-  | { kind: "risks"; items: Challenge[] }
+  | { kind: "risks"; items: Finding[] }
   | { kind: "outcome"; outcome: string | null; lessons: string | null };
 
 export type ReportModel = { title: string; sections: ReportSection[] };

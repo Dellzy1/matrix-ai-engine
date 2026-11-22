@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 import type { Lang } from "./i18n";
-import { challengeText } from "./challengeStrings";
+import { findingSentence } from "./intelligenceStrings";
 import type { ReportModel, ReportSection } from "./reportData";
 import { REPORT_STRINGS, fill, type ReportStrings } from "./reportStrings";
 
@@ -153,7 +153,7 @@ function SectionView({ section, s, lang }: { section: ReportSection; s: ReportSt
       return (
         <Block heading={s.sections.risks}>
           {section.items.map((c, i) => (
-            <Text key={i} style={styles.line}>{`• ${challengeText(lang, c).body}`}</Text>
+            <Text key={i} style={styles.line}>{`• ${findingSentence(lang, c)}`}</Text>
           ))}
         </Block>
       );
