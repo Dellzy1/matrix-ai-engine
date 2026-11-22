@@ -1,5 +1,6 @@
 import type { Project, Stage, Task, TaskStatus } from "./projects";
 import type { Finding } from "./intelligence";
+import { rankByScore } from "./scoring";
 
 // The report's content, built from saved data only. Nothing here is invented:
 // a missing value stays missing, and a section with nothing to show is left out.
@@ -39,21 +40,9 @@ export type ReportSection =
 export type ReportModel = { title: string; sections: ReportSection[] };
 
 // The same weighting the calculator uses. Keep this in step with scoreOptions in page.tsx.
+// Uses the shared scoring engine in src/lib/scoring.ts, so saved decisions match the live Calculator.
 export function rankOptions(criteria: DecisionRecord["criteria"], options: DecisionRecord["options"]) {
-  const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
-  const clamp = (n: number) => (Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : 1);
-  return options
-    .map((opt) => {
-      let weightedSum = 0;
-      criteria.forEach((crit) => {
-        const raw = clamp(opt.scores[crit.id] ?? 5);
-        const adjusted = crit.isInverted ? 10 - raw : raw;
-        weightedSum += adjusted * (crit.weight || 0);
-      });
-      const score = totalWeight === 0 ? 0 : Math.round((weightedSum / (totalWeight * 10)) * 100);
-      return { name: opt.name, score };
-    })
-    .sort((a, b) => b.score - a.score);
+  return rankByScore(criteria, options).map((o) => ({ name: o.name, score: o.score }));
 }
 
 export function buildReport({ project, stages, tasks, decision, challenges }: ReportInput): ReportModel {

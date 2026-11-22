@@ -1,3 +1,5 @@
+import { clampRating, maxPoints, weightedPoints } from "./scoring";
+
 export type Criterion = { id: string; name: string; weight: number; isInverted: boolean };
 export type Option = { id: string; name: string; scores: Record<string, number | null> };
 
@@ -10,16 +12,15 @@ export type Contribution = {
   inverted: boolean;
 };
 
-// Same arithmetic as the ranking: adjusted score × weight, scaled so 10 = max.
+// Same arithmetic as the ranking, from the shared engine in scoring.ts.
 export function contributions(criteria: Criterion[], option: Option): Contribution[] {
   return criteria.map((c) => {
-    const raw = Math.min(10, Math.max(1, option.scores[c.id] ?? 5));
-    const adjusted = c.isInverted ? 10 - raw : raw;
+    const raw = clampRating(option.scores[c.id]);
     return {
       criterionId: c.id,
       name: c.name,
-      points: adjusted * (c.weight || 0),
-      maxPoints: 10 * (c.weight || 0),
+      points: weightedPoints(c, option),
+      maxPoints: maxPoints(c),
       rawScore: raw,
       inverted: c.isInverted,
     };

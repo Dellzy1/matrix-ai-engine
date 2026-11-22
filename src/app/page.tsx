@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { explain } from "@/lib/explainRanking";
 import DecisionInsight from "./DecisionInsight";
+import { rankByScore } from "@/lib/scoring";
 import SensitivityPanel from "./SensitivityPanel";
 import StabilityCard from "./StabilityCard";
 import {
@@ -156,20 +157,9 @@ const hydrateCriteria = (rows: any[]): Criterion[] =>
   }));
 
 // Shared by the live results and the history cards.
+// Uses the shared scoring engine in src/lib/scoring.ts, the same one the saved decisions and PDF use.
 function scoreOptions(criteria: Criterion[], options: Option[]): ScoredOption[] {
-  const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
-  return options
-    .map((opt) => {
-      let weightedSum = 0;
-      criteria.forEach((crit) => {
-        const raw = clampScore(opt.scores[crit.id] ?? 5);
-        const adjusted = crit.isInverted ? 10 - raw : raw;
-        weightedSum += adjusted * (crit.weight || 0);
-      });
-      const score = totalWeight === 0 ? 0 : Math.round((weightedSum / (totalWeight * 10)) * 100);
-      return { ...opt, score };
-    })
-    .sort((a, b) => b.score - a.score);
+  return rankByScore(criteria, options);
 }
 
 function validateDecision(title: string, criteria: Criterion[], options: Option[], t: T): string | null {
