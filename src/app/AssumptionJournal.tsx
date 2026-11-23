@@ -42,6 +42,8 @@ import {
 import { JOURNAL_STRINGS } from "@/lib/assumptionJournalStrings";
 import { EVIDENCE_STRINGS } from "@/lib/assumptionEvidenceStrings";
 import { PLAN_STRINGS } from "@/lib/assumptionPlanStrings";
+import { GUIDE_STRINGS } from "@/lib/assumptionGuideStrings";
+import AssumptionGuide, { readGuideSeen, writeGuideSeen } from "./AssumptionGuide";
 import AssumptionPlanPanel from "./AssumptionPlanPanel";
 
 type Props = {
@@ -72,6 +74,11 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [selected, setSelected] = useState<Assumption | null>(null);
   const [editing, setEditing] = useState(false);
+
+  // Optional guide. The welcome shows once per device; the Guide button reopens it any time.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const gd = GUIDE_STRINGS[lang];
 
   // Form fields
   const [statement, setStatement] = useState("");
@@ -118,6 +125,10 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
     const fresh = rows.find((r) => r.id === selected.id);
     if (fresh) setSelected(fresh);
   }
+
+  useEffect(() => {
+    if (!readGuideSeen()) setWelcomeOpen(true);
+  }, []);
 
   useEffect(() => {
     reload();
@@ -269,18 +280,49 @@ export default function AssumptionJournal({ lang, sb, userId, isDark, onBack }: 
           <p className="text-xs text-slate-400">{t.subtitle}</p>
         </div>
         {mode === "list" && (
-          <button
-            type="button"
-            onClick={() => openForm(null)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow"
-          >
-            {t.add}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setGuideOpen((open) => !open)}
+              className="text-xs text-indigo-200 bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-800 rounded-xl px-4 py-2.5"
+            >
+              {gd.guideButton}
+            </button>
+            <button
+              type="button"
+              onClick={() => openForm(null)}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow"
+            >
+              {t.add}
+            </button>
+          </div>
         )}
       </div>
 
       {notice && <p className="text-xs text-emerald-300">{notice}</p>}
       {loadError && <p className="text-xs text-rose-300">{loadError}</p>}
+
+      {/* Optional guide. It never blocks the dashboard below. */}
+      {mode === "list" && welcomeOpen && (
+        <AssumptionGuide
+          lang={lang}
+          isDark={isDark}
+          mode="welcome"
+          onStart={() => {
+            writeGuideSeen();
+            setWelcomeOpen(false);
+            setGuideOpen(true);
+          }}
+          onSkip={() => {
+            writeGuideSeen();
+            setWelcomeOpen(false);
+          }}
+          onClose={() => setGuideOpen(false)}
+        />
+      )}
+      {mode === "list" && guideOpen && (
+        <AssumptionGuide lang={lang} isDark={isDark} mode="guide" onStart={() => {}} onSkip={() => {}} onClose={() => setGuideOpen(false)} />
+      )}
 
       {/* Form: add or edit */}
       {mode === "form" && (
