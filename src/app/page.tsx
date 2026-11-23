@@ -40,6 +40,7 @@ import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 import CalculatorPDFDownload from "./CalculatorPDFDownload";
 import { buildCalculatorReport } from "@/lib/calculatorReport";
 import { SAVE_CHOICE_STRINGS, type SaveChoice } from "@/lib/saveChoiceStrings";
+import { templateText } from "@/lib/templateStrings";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
@@ -469,8 +470,8 @@ export default function App() {
     setActiveDecisionId(null);
     setPromptInput("");
     setReason("");
-    setCriteria(DEFAULT_CRITERIA);
-    setOptions(DEFAULT_OPTIONS);
+    setCriteria(DEFAULT_CRITERIA.map((c) => ({ ...c, name: templateText(lang, "criteria", c.name) })));
+    setOptions(DEFAULT_OPTIONS.map((o) => ({ ...o, name: templateText(lang, "options", o.name) })));
     setReviewDate("");
     setActualOutcome("");
     setNotice(null);
@@ -641,12 +642,12 @@ export default function App() {
   const handleLoadTemplate = (templateName: string) => {
     const tmpl = DECISION_TEMPLATES.find((item) => item.name === templateName);
     if (!tmpl) return;
-    const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c }));
+    const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c, name: templateText(lang, "criteria", c.name) }));
     setActiveDecisionId(null);
-    setPromptInput(tmpl.name);
+    setPromptInput(templateText(lang, "templates", tmpl.name));
     setCriteria(templateCriteria);
     setOptions(
-      tmpl.options.map((name) => ({ id: uid(), name, scores: blankScores(templateCriteria) }))
+      tmpl.options.map((name) => ({ id: uid(), name: templateText(lang, "options", name), scores: blankScores(templateCriteria) }))
     );
     setNotice(null);
   };
@@ -1146,7 +1147,7 @@ export default function App() {
                   </option>
                   {DECISION_TEMPLATES.map((tpl) => (
                     <option key={tpl.name} value={tpl.name}>
-                      {tpl.name}
+                      {templateText(lang, "templates", tpl.name)}
                     </option>
                   ))}
                 </select>
