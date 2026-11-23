@@ -40,13 +40,13 @@ import { listProjects, type Project, type TaskRow } from "@/lib/projects";
 import CalculatorPDFDownload from "./CalculatorPDFDownload";
 import { buildCalculatorReport } from "@/lib/calculatorReport";
 import { SAVE_CHOICE_STRINGS, type SaveChoice } from "@/lib/saveChoiceStrings";
-import { templateText } from "@/lib/templateStrings";
 
 // These screens are downloaded only when someone opens them, so the home page stays light on phones.
 const ActionPlan = dynamic(() => import("./ActionPlan"), { ssr: false, loading: () => null });
 const VaultScreen = dynamic(() => import("./VaultScreen"), { ssr: false, loading: () => null });
 const ProgressScreen = dynamic(() => import("./ProgressScreen"), { ssr: false, loading: () => null });
 const AssumptionJournal = dynamic(() => import("./AssumptionJournal"), { ssr: false, loading: () => null });
+const ProblemSolver = dynamic(() => import("./ProblemSolver"), { ssr: false, loading: () => null });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -213,7 +213,7 @@ export default function App() {
     : "bg-slate-50 border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-500";
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress" | "journal">("landing");
+  const [viewState, setViewState] = useState<"landing" | "input" | "results" | "plan" | "vault" | "progress" | "journal" | "solver">("landing");
 
   // The phone and browser Back buttons move between screens. Each screen change is recorded in history.
   const viewFromHistory = useRef(false);
@@ -470,8 +470,8 @@ export default function App() {
     setActiveDecisionId(null);
     setPromptInput("");
     setReason("");
-    setCriteria(DEFAULT_CRITERIA.map((c) => ({ ...c, name: templateText(lang, "criteria", c.name) })));
-    setOptions(DEFAULT_OPTIONS.map((o) => ({ ...o, name: templateText(lang, "options", o.name) })));
+    setCriteria(DEFAULT_CRITERIA);
+    setOptions(DEFAULT_OPTIONS);
     setReviewDate("");
     setActualOutcome("");
     setNotice(null);
@@ -642,12 +642,12 @@ export default function App() {
   const handleLoadTemplate = (templateName: string) => {
     const tmpl = DECISION_TEMPLATES.find((item) => item.name === templateName);
     if (!tmpl) return;
-    const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c, name: templateText(lang, "criteria", c.name) }));
+    const templateCriteria: Criterion[] = tmpl.criteria.map((c) => ({ ...c }));
     setActiveDecisionId(null);
-    setPromptInput(templateText(lang, "templates", tmpl.name));
+    setPromptInput(tmpl.name);
     setCriteria(templateCriteria);
     setOptions(
-      tmpl.options.map((name) => ({ id: uid(), name: templateText(lang, "options", name), scores: blankScores(templateCriteria) }))
+      tmpl.options.map((name) => ({ id: uid(), name, scores: blankScores(templateCriteria) }))
     );
     setNotice(null);
   };
@@ -1108,6 +1108,7 @@ export default function App() {
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenVault={() => setViewState("vault")}
               onOpenJournal={() => setViewState("journal")}
+              onOpenSolver={() => setViewState("solver")}
               onOpenProgress={() => setViewState("progress")}
             />
           )}
@@ -1147,7 +1148,7 @@ export default function App() {
                   </option>
                   {DECISION_TEMPLATES.map((tpl) => (
                     <option key={tpl.name} value={tpl.name}>
-                      {templateText(lang, "templates", tpl.name)}
+                      {tpl.name}
                     </option>
                   ))}
                 </select>
@@ -1684,6 +1685,17 @@ export default function App() {
               decisionPlans={decisionPlanProgress}
               onOpen={handleLoadSavedDecision}
               onSignIn={() => openAuth("signin")}
+              onBack={() => setViewState("landing")}
+            />
+          )}
+
+          {/* Problem Solver (Round 1) */}
+          {viewState === "solver" && supabase && user && (
+            <ProblemSolver
+              lang={lang}
+              sb={supabase}
+              userId={user.id}
+              isDark={isDark}
               onBack={() => setViewState("landing")}
             />
           )}
