@@ -20,6 +20,8 @@ export type PlanCopy = {
   vSuccess: string;
   vDate: string;
   vNoProject: string;
+  taskPrefix: string;
+  successLabel: string;
 };
 
 const en: PlanCopy = {
@@ -41,6 +43,8 @@ const en: PlanCopy = {
   vSuccess: "Describe what result would count as success.",
   vDate: "Choose a valid date.",
   vNoProject: "Link this assumption to a project first.",
+  taskPrefix: "Validate:",
+  successLabel: "Success:",
 };
 
 const fr: PlanCopy = {
@@ -62,6 +66,8 @@ const fr: PlanCopy = {
   vSuccess: "Décrivez le résultat qui compterait comme un succès.",
   vDate: "Choisissez une date valide.",
   vNoProject: "Liez d'abord cette hypothèse à un projet.",
+  taskPrefix: "Valider :",
+  successLabel: "Succès :",
 };
 
 const es: PlanCopy = {
@@ -83,6 +89,8 @@ const es: PlanCopy = {
   vSuccess: "Describe qué resultado contaría como éxito.",
   vDate: "Elige una fecha válida.",
   vNoProject: "Vincula primero este supuesto a un proyecto.",
+  taskPrefix: "Validar:",
+  successLabel: "Éxito:",
 };
 
 const pt: PlanCopy = {
@@ -104,6 +112,8 @@ const pt: PlanCopy = {
   vSuccess: "Descreva qual resultado contaria como sucesso.",
   vDate: "Escolha uma data válida.",
   vNoProject: "Vincule primeiro esta premissa a um projeto.",
+  taskPrefix: "Validar:",
+  successLabel: "Sucesso:",
 };
 
 const sw: PlanCopy = {
@@ -125,6 +135,8 @@ const sw: PlanCopy = {
   vSuccess: "Eleza matokeo gani yangehesabiwa kuwa mafanikio.",
   vDate: "Chagua tarehe sahihi.",
   vNoProject: "Unganisha dhana hii na mradi kwanza.",
+  taskPrefix: "Thibitisha:",
+  successLabel: "Mafanikio:",
 };
 
 const zh: PlanCopy = {
@@ -146,6 +158,8 @@ const zh: PlanCopy = {
   vSuccess: "请描述什么结果算作成功。",
   vDate: "请选择有效日期。",
   vNoProject: "请先将这条假设关联到一个项目。",
+  taskPrefix: "验证：",
+  successLabel: "成功标准：",
 };
 
 export const PLAN_STRINGS: Record<Lang, PlanCopy> = { en, fr, es, pt, sw, zh };

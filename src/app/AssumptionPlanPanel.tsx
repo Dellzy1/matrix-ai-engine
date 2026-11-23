@@ -80,7 +80,7 @@ export default function AssumptionPlanPanel({ lang, sb, userId, isDark, assumpti
     setError(null);
     setNotice(null);
     const plan = { method, success_measure: success, due_date: due || null };
-    const r = await addPlanToActionPlan(sb, userId, assumption, plan);
+    const r = await addPlanToActionPlan(sb, userId, assumption, plan, { taskPrefix: p.taskPrefix, successLabel: p.successLabel });
     setBusy(false);
     if (r.kind === "added") {
       setNotice(p.added);

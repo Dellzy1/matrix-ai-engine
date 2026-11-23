@@ -301,6 +301,7 @@ export async function addPlanToActionPlan(
   userId: string,
   a: Assumption,
   plan: ValidationPlan,
+  labels: { taskPrefix: string; successLabel: string },
 ): Promise<PlanResult> {
   if (a.validation_task_id) return { kind: "already", taskId: a.validation_task_id };
   if (!a.project_id) return { kind: "problem", key: "vPlanNoProject" };
@@ -312,8 +313,8 @@ export async function addPlanToActionPlan(
   const stageId = (stages.data?.[0] as { id: string } | undefined)?.id ?? null;
 
   const task = await addTask(sb, a.project_id, {
-    title: `Validate: ${a.statement}`,
-    description: `${plan.method.trim()}\nSuccess: ${plan.success_measure.trim()}`,
+    title: `${labels.taskPrefix} ${a.statement}`,
+    description: `${plan.method.trim()}\n${labels.successLabel} ${plan.success_measure.trim()}`,
     priority: "medium",
     stage_id: stageId,
     start_date: null,
