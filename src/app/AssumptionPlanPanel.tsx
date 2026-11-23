@@ -11,6 +11,7 @@ import {
   type PlanKey,
 } from "@/lib/assumptionJournal";
 import { PLAN_STRINGS } from "@/lib/assumptionPlanStrings";
+import { PLAN_STRINGS as APP_PLAN_STRINGS } from "@/lib/planStrings";
 import { JOURNAL_STRINGS } from "@/lib/assumptionJournalStrings";
 
 type Props = {
@@ -80,7 +81,7 @@ export default function AssumptionPlanPanel({ lang, sb, userId, isDark, assumpti
     setError(null);
     setNotice(null);
     const plan = { method, success_measure: success, due_date: due || null };
-    const r = await addPlanToActionPlan(sb, userId, assumption, plan, { taskPrefix: p.taskPrefix, successLabel: p.successLabel });
+    const r = await addPlanToActionPlan(sb, userId, assumption, plan, { taskPrefix: p.taskPrefix, successLabel: p.successLabel, defaultStage: APP_PLAN_STRINGS[lang].stageResearch });
     setBusy(false);
     if (r.kind === "added") {
       setNotice(p.added);

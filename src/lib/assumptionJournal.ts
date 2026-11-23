@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addActivity, addTask } from "./projects";
+import { addActivity, addStage, addTask } from "./projects";
 
 // The Assumption Journal (Round 1). It uses the existing assumptions table. It adds no second status system.
 // Confidence is the user's stated belief (0–100). It is never treated as a probability of success.
@@ -301,7 +301,7 @@ export async function addPlanToActionPlan(
   userId: string,
   a: Assumption,
   plan: ValidationPlan,
-  labels: { taskPrefix: string; successLabel: string },
+  labels: { taskPrefix: string; successLabel: string; defaultStage: string },
 ): Promise<PlanResult> {
   if (a.validation_task_id) return { kind: "already", taskId: a.validation_task_id };
   if (!a.project_id) return { kind: "problem", key: "vPlanNoProject" };
@@ -310,7 +310,16 @@ export async function addPlanToActionPlan(
     sb.from("project_stages").select("id").eq("project_id", a.project_id).order("position", { ascending: true }).limit(1),
     sb.from("project_tasks").select("id", { count: "exact", head: true }).eq("project_id", a.project_id),
   ]);
-  const stageId = (stages.data?.[0] as { id: string } | undefined)?.id ?? null;
+  if (stages.error) return { kind: "error", message: stages.error.message };
+
+  // A task with no stage is saved but never shown on the board. So if the project has no stages,
+  // create one default stage first. Existing stages are left alone.
+  let stageId = (stages.data?.[0] as { id: string } | undefined)?.id ?? null;
+  if (!stageId) {
+    const created = await addStage(sb, a.project_id, labels.defaultStage, 0);
+    if (created.error || !created.data) return { kind: "error", message: created.error ?? "stage" };
+    stageId = created.data.id;
+  }
 
   const task = await addTask(sb, a.project_id, {
     title: `${labels.taskPrefix} ${a.statement}`,
